@@ -12,3 +12,5 @@ lib-0.6/
 *.run.xml
 tex-dump/talkA/speech.pdf
 tex-dump/reportA/reportA.pdf
+tex/reportA/reportA.pdf
+tex/talkA/speech.pdf

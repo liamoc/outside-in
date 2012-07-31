@@ -1,0 +1,374 @@
+\documentclass{beamer}
+\usepackage[latin1]{inputenc}
+\usepackage{ifthen}
+\usepackage{alltt}
+\usepackage{MnSymbol}
+\usepackage[style=philosophy-modern]{biblatex}
+% Package biblatex: '\bibliography' must be given in preamble.
+\bibliography{../cites}
+
+\usecolortheme{dove}
+\definecolor{Red}{rgb}{1,0,0}
+\definecolor{Blue}{rgb}{0,0,1}
+\definecolor{Green}{rgb}{0,1,0}
+\definecolor{magenta}{rgb}{1,0,.6}
+\definecolor{lightblue}{rgb}{0,.5,1}
+\definecolor{lightpurple}{rgb}{.6,.4,1}
+\definecolor{gold}{rgb}{.6,.5,0}
+\definecolor{orange}{rgb}{1,0.4,0}
+\definecolor{hotpink}{rgb}{1,0,0.5}
+\definecolor{newcolor2}{rgb}{.5,.3,.5}
+\definecolor{newcolor}{rgb}{0,.3,1}
+\definecolor{newcolor3}{rgb}{1,0,.35}
+\definecolor{White}{rgb}{1,1,1}
+\definecolor{darkgreen1}{rgb}{0, .35, 0}
+\definecolor{darkgreen}{rgb}{0, .6, 0}
+\definecolor{darkblue}{rgb}{0, 0, .6}
+\definecolor{darkred}{rgb}{.75,0,0}
+\newcommand{\putat}[3]{\begin{picture}(0,0)(0,0)\put(#1,#2){#3}\end{picture}}
+\newcommand{\gnm}[1]{\text{\gntermfont{#1}}}
+
+\newcommand{\mapstos}[0]{\stackrel{\star}{\mapsto}}
+\newcommand{\mapstoc}[0]{\stackrel{!}{\mapsto}}
+
+\newcommand*{\newblock}{}
+\newcommand{\pred}[2]{{#1}\;\mathit{#2}}
+\newcommand{\rel}[2]{{#1}\;\longleftrightarrow\;{#2}}
+\newcommand{\predand}[2]{{#1}\;\mathit{#2}\quad}
+\newcommand{\Inf}[3][!*NEVER USED ARGUMENT*!]{%
+  \ifthenelse{\equal{#1}{!*NEVER USED ARGUMENT*!}}{%
+    \dfrac{#2}{#3}
+  }{%
+    \dfrac{#2}{#3}(#1)
+  }%
+}
+\newcommand{\subst}[3]{\{{#2}/{#1}\}#3}
+\newcommand{\te}[1]{{\textnormal{\texttt{#1}}}}
+\newcommand{\tearg}[2]{{\texttt{#1(}#2{\texttt{)}}}}
+\newcommand{\vdasharrow}[0]{\vdash\!\!\!\!\filledtriangleright}
+\newcommand{\ok}[1]{{#1}\;\small{\textbf{ok}}}
+\newcommand{\decs}[2]{\small{{#1}\;\textbf{decs}}\;{#2}}
+\newcommand{\iftc}[3]{\texttt{if(}{#1}\texttt{) then }{#2}\texttt{ else }{#3}}
+\newcommand{\whiletc}[2]{\texttt{while(}{#1}\texttt{)}{#2}}
+\newcommand{\returntc}[1]{\texttt{return(}{#1}\texttt{);}}
+\newcommand{\blocktc}[1]{\texttt{\{}{#1}\texttt{\}}}
+\newrobustcmd*{\footlessfullcite}{\AtNextCite{\renewbibmacro{title}{}\renewbibmacro{in:}{}}\footfullcite}
+\xdefinecolor{olive}{cmyk}{0.64,0,0.95,0.4}
+\useoutertheme[subsection=false]{smoothbars}
+\usetheme{Singapore}
+\title[OutsideIn(X) Formalised in Agda]{\textbf{Formalising GHC's Type System}\\$\textsc{OutsideIn}(X)$ encoded in Agda}
+\author{Thesis A Presentation \\ Liam O'Connor (z3253158)}
+\institute{CSE, UNSW (also NICTA)}
+\date{Tue 24 April 2012}
+\begin{document}
+\begin{frame}
+\titlepage
+\end{frame}
+\section{The Problem}
+\subsection{Introduction}
+\begin{frame}{Haskell}
+	
+\putat{210}{-70}{\includegraphics[width=5em]{haskell_logo.pdf}}
+	\begin{itemize}	
+		\item Strongly, statically typed purely functional language\footcite{Anonymous:2010we}
+
+		\medskip
+		
+		\item Getting stronger all the time:		
+		\begin{itemize}
+		   \item GADTs \footcite{Schrijvers:2009jg}
+		   \item Type Families  \footcite{citeulike:9320233}
+		   \item $n$-Rank Types \footcite{Jones:2007dr}
+		   \item Data Kinds, Polymorphic Kinds  \footcite{Yorgey:2012:GHP:2103786.2103795}
+		\end{itemize}
+	\end{itemize}
+
+	
+
+\end{frame}
+
+\subsection{Problem}
+\begin{frame}{The Problem}
+	\begin{itemize}
+	\item These type system extensions are formalised in isolation.
+	\pause
+	\item Implementing them \emph{together} in the one compiler can be difficult, and can also lead to many problems (inference, soundness etc.)
+	\pause
+	
+	\medskip
+	
+	$\Longrightarrow$ we need a unified formalisation for all of them!
+	\end{itemize}
+\end{frame}	
+\begin{frame}{Partial Solution}
+	\begin{itemize}
+	\item $\textsc{OutsideIn}(X)$ is a (mostly rigorous) formalisation of the type checking and inference system currently in use for GHC.\footcite{Vytiniotis:2011:OMT:2139531.2139533}
+	\pause
+	\item \textbf{It's not enough}. 
+	
+     New extensions are already being developed that ignore it! \footcite{Yorgey:2012:GHP:2103786.2103795}			
+	\end{itemize}
+\end{frame}	
+
+\subsection{Agda}
+\begin{frame}{Agda}
+	Agda is a programming language that is:
+	\begin{itemize}
+		\item \textbf{Dependently Typed}\footcite{MartinLof:1984tr}
+		\pause
+		\item \textbf{Total} - missed pattern cases, general recursion not allowed.
+		\pause		
+				
+		$\therefore$ doubles as a proof assistant!\footcite{Howard:1980vs}
+	\end{itemize}
+\end{frame}
+\subsection{Related Work}
+\begin{frame}{Related Work}
+	Unfortunately, not much.
+	\begin{itemize}
+		\item ML's (similar) type system was formalised for soundness proofs in Coq. \footcite{Dubois00provingml}
+		\pause
+		\item Nothing notable in Agda
+		\item $\textsc{OutsideIn}(X)$ is new research $\Rightarrow$ not much work on it.
+	\end{itemize}
+\end{frame}
+\section{Initial Steps}
+\subsection {Rest of the Semester}
+\begin{frame}{Initial Steps}
+	\begin{itemize}
+		\item Experiment with different encodings in Agda 
+		\item Not based on all of $\textsc{OutsideIn}(X)$, but a subset that is similar to $\textsc{HM}$. 
+		\item Starting with the \emph{constraint generation} part of type \emph{inference.}
+		\item Constraints are generated, \emph{then} solved. No interleaving.		
+	\end{itemize}
+\end{frame}
+\begin{frame}{Parameterisation}
+\textbf{Problem:} \textsc{OutsideIn}(X) is parameterised by the language/constraint system used.
+			\pause
+		$\Longrightarrow$ Ignoring this for now
+\end{frame}
+\subsection {Representing Names}
+\begin{frame}{Representing Names}
+	\pause
+	\begin{center}
+		\textbf{De Bruijn Indices}
+		\begin{displaymath}
+			(\Lambda x.\ \Lambda y.\ x\ y) \leadsto (\Lambda.\ \Lambda.\ 0\ 1 ) \; \color{white}{\checkmark}
+		\end{displaymath}\pause
+		or
+		\begin{displaymath}
+			(\Lambda x.\ \Lambda y.\ x\ y) \leadsto (\Lambda.\ \Lambda.\ 1\ 0 ) \; \pause \color{darkgreen}{\checkmark}
+		\end{displaymath}		
+	\end{center}
+\end{frame}
+\begin{frame}{Dealing with Fresh Variables}	
+	\begin{displaymath}
+		\Inf{\predand{\alpha}{\textbf{fresh}} \Gamma, (x : \alpha) \vdasharrow e : \tau \leadsto C}{\Gamma \vdasharrow \lambda x.\ e : \alpha \rightarrow \tau \leadsto C}{\textsc{Abs}}
+	\end{displaymath}
+\end{frame}	
+\begin{frame}{Dealing with Fresh Variables}	
+	View type as input, only constraint as output:
+	\begin{displaymath}
+		\Inf{\predand{\alpha}{\textbf{fresh}}  {\color{darkred}\predand{\beta}{\textbf{fresh}}} \Gamma, (x : \alpha) \vdasharrow e : {\color{darkred}\beta} \leadsto C}{\Gamma \vdasharrow \lambda x.\ e : {\color{darkred}\tau} \leadsto C \land {\color{darkred} \tau \sim (\alpha \rightarrow \beta) }}{\textsc{Abs}}
+	\end{displaymath}
+\end{frame}	
+\begin{frame}{Dealing with Fresh Variables}	Extend the constraint language to include quantifiers for ``fresh'' variables \footcite{Pottier:2005ue}:
+	\begin{displaymath}
+		\Inf{\Gamma_{\color{darkred}{\uparrow\uparrow}}, (x : {\color{darkred}{0}} ) \vdasharrow e : {\color{darkred} 1} \leadsto C}{\Gamma \vdasharrow \lambda x.\ e : \tau \leadsto {\color{darkred}{\exists.\ \exists.\ }}C \land \tau \sim {\color{darkred}(0 \rightarrow 1)}}{\textsc{Abs}}
+	\end{displaymath}
+\end{frame}	
+\subsection {Indexing Constraint Types}
+\begin{frame}
+	\begin{displaymath}
+		\Inf{C : \text{Constraint}}{\exists. C : \text{Constraint}}{\exists\textsc{-Con}}
+	\end{displaymath}
+\end{frame}
+\begin{frame}
+	Index by number of available variables\footcite{Morris04exploringthe} \footcite{McBride:2003bg}:
+	\begin{displaymath}
+		\Inf{C : \text{Constraint}(s(n))}{\exists. C : \text{Constraint}(n)}{\exists\textsc{-Con}}
+	\end{displaymath}
+	\pause
+	\begin{displaymath}
+		\Inf{\tau_1 : \text{TypeTerm}(n)\quad\tau_2 : \text{TypeTerm}(n)}{\tau_1 \sim \tau_2 : \text{Constraint}(n)}{\textsc{Eq-Con}}
+	\end{displaymath}
+	\pause
+	\begin{displaymath}
+		\Inf{x : \text{Fin}(n)}{ \mathtt{Var}(x) : \text{TypeTerm}(n)}{\textsc{TVar-Con}}
+	\end{displaymath}
+	\pause
+		\color{darkblue}
+	\begin{displaymath}
+		\Inf{}{\mathtt{zero} : \text{Fin}(s(n))}{\textsc{Zero}} \quad \Inf{x : \text{Fin}(n)}{ s(x) : \text{Fin}(s(n)) }{\textsc{Succ}}
+	\end{displaymath}
+\end{frame}
+\begin{frame}{Generalising}
+	Parameterise by a type used for names:
+	\begin{displaymath}
+		\Inf{C : \text{Constraint}({\color{darkred}\mathcal{S}(\tau)})}{\exists. C : \text{Constraint}({\color{darkred} \tau})}{\exists\textsc{-Con}}
+	\end{displaymath}
+
+	\begin{displaymath}
+		\Inf{\tau_1 : \text{TypeTerm}({\color{darkred}\tau})\quad\tau_2 : \text{TypeTerm}({\color{darkred}\tau})}{\tau_1 \sim \tau_2 : \text{Constraint}({\color{darkred}\tau})}{\textsc{Eq-Con}}
+	\end{displaymath}
+
+	\begin{displaymath}
+		\Inf{\color{darkred} x : \tau}{ \mathtt{Var}(x) : \text{TypeTerm}({\color{darkred}\tau})}{\textsc{TVar-Con}}
+	\end{displaymath}
+	\pause
+	\color{darkgreen}
+	\begin{displaymath}
+		\Inf{}{\mathtt{zero} : \mathcal{S}(\tau)}{\textsc{Zero}}\quad\Inf{x : \tau}{s(x) : \mathcal{S}(\tau)}{\textsc{Succ}}
+	\end{displaymath}
+\end{frame}
+\subsection{coincidence}
+\begin{frame}{Just by Coincidence}
+	TypeTerm forms a monad:
+	\begin{displaymath}
+		\gg\!= : \text{TypeTerm}(\alpha) \rightarrow (\alpha \rightarrow \text{TypeTerm}(\beta)) \rightarrow \text{TypeTerm}(\beta)
+	\end{displaymath}
+	\begin{displaymath}
+		\mathtt{unit} : \alpha \rightarrow \text{TypeTerm}(\alpha) = \mathtt{Var}
+	\end{displaymath}
+	Kleisli arrows are substitutions $\alpha \rightarrow \text{TypeTerm}(\beta)$. 
+	
+	\pause
+	These substitutions are, by definition, \emph{capture avoiding} \footcite{Bellegarde:1994:SFM:202774.202788} \footcite{Bird:1999:DBN:968699.968702}
+		
+\end{frame}
+\begin{frame}{Monad Laws}
+	Kleisli composition forms a category ({\color{darkred}The Monad Laws}):
+	\begin{itemize}
+		\item {\tt unit} (i.e {\tt Var}) is an identity substitution: 
+		
+		$$\mathtt{Var} \circ g \stackrel{\cdot}{=} g \qquad f \circ \mathtt{Var} \stackrel{\cdot}{=} f$$
+		\item Substitution composition is associative: 
+		
+		$$(a \circ b) \circ g \stackrel{\cdot}{=} a \circ (b \circ g)$$
+    \end{itemize}
+	 (Where $a \circ b$ is $\lambda x.\ a\ x \gg\!= b$)
+	\end{frame}
+	\begin{frame}{Functors!}
+		Since TypeTerm is a monad, Environment can be indexed by the name type, and therefore form a functor:
+		\pause
+		\begin{displaymath}
+			fmap : (\alpha \rightarrow \beta) \rightarrow Environment(\alpha) \rightarrow Environment(\beta)  
+		\end{displaymath}
+		\begin{displaymath}
+			\Gamma_\uparrow = {\tt fmap}\ s\ \Gamma
+		\end{displaymath}
+		(We also get functor instances for Constraint)
+	\end{frame}	
+	\section{Thesis B}
+	\subsection{Generating Constraints}
+	\begin{frame}{Generating Constraints}
+		With the new quantifiers added, constraints can be generated in a simple structural, syntax-directed way much like the original $\textsc{OutsideIn}(X)$ formalisation.		
+	\end{frame}
+	\begin{frame}{Existential Quantifiers}				
+		\pause
+		Rewrite to prenex normal form:
+		\begin{displaymath}
+			\begin{array}{lll}
+				\phi \land \exists.\ \psi & \mapsto & \exists.\ \phi_\uparrow \land \psi \\
+				& \cdots &
+			\end{array}
+		\end{displaymath}		
+			Termination measure: Depth of $\exists$-nesting.
+			\pause
+			
+			\textbf{Possible Problem}: 
+			\begin{itemize}
+				\item $\textsc{OutsideIn}(X)$ defines its own existential quantifiers for local assumptions (which should not be globalised).
+				\item $\textsc{OutsideIn}(X)$ defines implication constraints for local assumptions.
+			\end{itemize}
+	\end{frame}
+	\subsection{Proofs}
+	\begin{frame}{Proofs}
+		Once the constraint generation phase is complete, we can adapt the proofs of \emph{soundness} and \emph{principality} of the inference algorithm. 
+		
+		We can do this without full knowledge of the constraint system, entailment relation or solver being used.
+		
+		\medskip
+		
+		\textbf{N.B: } $\textsc{OutsideIn}(X)$ does not guarantee completeness.
+		
+				\medskip
+		\pause
+		
+		$\Longrightarrow$ virtually impossible to gauge how long this will take.
+	\end{frame}
+	\subsection{Solving}
+	\begin{frame}{Solving Constraints}
+		\textbf{If/When proofs are complete}, the next step is encoding the solver used by GHC's constraint system and plugging it into the $\textsc{OutsideIn}(X)$ formalisation in Agda.
+		
+		\medskip
+		
+		The solver is complicated, and specified as a rewrite system.
+		
+		\medskip
+		
+		Termination of the rewrite system is not proven, or even discussed: Even getting Agda to accept it may be a major source of pain.
+		\pause
+		
+		\bigskip
+		
+		$\Longrightarrow$ Solver added to the ``nice to have'' pile.
+	\end{frame}
+	\begin{frame}{Unification}
+		McBride's ``First-order unification by structural recursion'', a JFP paper that describes the use of terms indexed by available variables to provide a structural termination argument for first-order unification.
+		
+		\medskip
+		
+		Andrea Vezzozi has written an Agda version of the Epigram in the paper (a fairly straightforward translation).		
+	\end{frame}
+	\section{Timeline}
+	\subsection{Thesis A}
+	\begin{frame}{Rest of Thesis A}
+		\begin{itemize}
+			\item Finish the basic language formalisation (without local assumptions)
+			\item Investigate and, if time, resolve issues with the local assumption constraints.
+		\end{itemize}	
+				\putat{20}{-90}{\includegraphics[width=2.5em]{determined.png}}
+	\end{frame}	
+	\subsection{Thesis B}	
+	\begin{frame}{Thesis B Weeks 1-3}
+		\begin{itemize}
+			\item Finalise the formalisation of $\textsc{OutsideIn}(X)$, without the language parameterisation.
+			\item Make a start on proof work.
+		\end{itemize}	
+		\putat{20}{-96}{\includegraphics[width=2.5em]{concentrating2.png}}
+	\end{frame}	
+	\begin{frame}{Thesis B Weeks 3-6}
+		\begin{itemize}
+			\item Keep working on soundness, principality proofs. 
+			\item Avoid going insane.
+		\end{itemize}	
+		\putat{20}{-104}{\includegraphics[width=2.5em]{concentrating.png}}
+	\end{frame}	
+	\begin{frame}{Thesis B Weeks 6-9}
+		\begin{itemize}
+			\item Finish proofs. 
+			\item Figure out how to add the solver
+		\end{itemize}	
+		\putat{15}{-104}{\includegraphics[width=4.5em]{jackiechan.png}}
+	\end{frame}	
+	\begin{frame}{Thesis B Weeks 9-12}
+		\begin{itemize}
+			\item Finalise documents
+			\item If lucky, complete solver. 
+		\end{itemize}	
+		\putat{15}{-104}{\includegraphics[width=4.5em]{angry-desk-flip.png}}
+	\end{frame}	
+	\begin{frame}[allowframebreaks]{Bibliography}
+		\small
+		\setlength{\parskip}{1cm}
+
+		\printbibliography
+		\end{frame}
+	
+	
+	
+	
+
+
+\end{document}

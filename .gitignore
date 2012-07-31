@@ -1,2 +1,14 @@
 lib-0.6/
 *.agdai
+*.log
+*.synctex.gz
+*.out
+*.blg
+*.bbl
+*.aux
+*.toc
+*-blx.bib
+*.snm
+*.run.xml
+tex-dump/talkA/speech.pdf
+tex-dump/reportA/reportA.pdf

@@ -1,5 +1,6 @@
 open import OutsideIn.Prelude 
-module OutsideIn.Types where
+open import OutsideIn.X
+module OutsideIn.Instantiations.Simple where
 
   data Type ( n :  Set) : Set where
     _⟶_ : Type n → Type n → Type n
@@ -49,4 +50,6 @@ module OutsideIn.Types where
            left-id {_}{α ⟶ β} = cong₂ _⟶_ (left-id {τ = α}) (left-id {τ = β})
            left-id {_}{α ·  β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
            left-id {_}{Var  v} = refl
+
+  postulate Simple : X
 

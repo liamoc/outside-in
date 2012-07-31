@@ -8,7 +8,7 @@ module OutsideIn.X where
       field type-is-functor : Functor Type
       field type-is-monad : Monad Type
       field eqConstraint : ∀ {n} → Type n → Type n → QConstraint n
-      field conjConstraint : ∀ {n} → Type n → Type n → QConstraint n
+      field conjConstraint : ∀ {n} → QConstraint n → QConstraint n → QConstraint n
       field tautologyConstraint : ∀ {n} → QConstraint n
       field funType : ∀ {n} → Type n → Type n → Type n
       field appType : ∀ {n} → Type n → Type n → Type n

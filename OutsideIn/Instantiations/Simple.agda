@@ -51,5 +51,35 @@ module OutsideIn.Instantiations.Simple where
            left-id {_}{α ·  β} = cong₂ _·_  (left-id {τ = α}) (left-id {τ = β})
            left-id {_}{Var  v} = refl
 
-  postulate Simple : X
+  data SConstraint (x : Set) : Set where
+     _∼_ : Type x → Type x → SConstraint x
+     _∧′_ : SConstraint x → SConstraint x → SConstraint x
+     ε : SConstraint x 
+
+  sconstraint-is-functor : Functor SConstraint 
+  sconstraint-is-functor = record { map = s-map; identity = s-ident; composite = s-comp }
+     where open Functor (type-is-functor)
+           s-map : {A B : Set} → (A → B) → SConstraint A → SConstraint B
+           s-map f (ε) = ε
+           s-map f (a ∼ b) = map f a ∼ map f b
+           s-map f (a ∧′ b) = s-map f a ∧′ s-map f b
+           s-ident : {A : Set} {f : A → A} → isIdentity f → isIdentity (s-map f)
+           s-ident isid {ε} = refl
+           s-ident isid {a ∼ b} = cong₂ _∼_ (identity isid) (identity isid) 
+           s-ident isid {a ∧′ b} = cong₂ _∧′_ (s-ident isid) (s-ident isid) 
+           s-comp : {A B C : Set} {f : A → B} {g : B → C} {x : SConstraint A} → s-map (g ∘ f) x ≡ s-map g (s-map f x)
+           s-comp {x = ε} = refl
+           s-comp {x = a ∼ b} = cong₂ _∼_ composite composite
+           s-comp {x = a ∧′ b} = cong₂ _∧′_ s-comp s-comp
+
+  Simple : (ℕ → Set) → X
+  Simple dc = record { dc = dc
+                     ; Type = Type
+                     ; QConstraint = SConstraint
+                     ; type-is-functor = type-is-functor
+                     ; type-is-monad = type-is-monad
+                     ; qconstraint-is-functor = sconstraint-is-functor
+                     ; funType = _⟶_; appType = _·_
+                     ; eqConstraint = _∼_; conjConstraint = _∧′_; tautologyConstraint = ε 
+                     }
 

@@ -1,7 +1,9 @@
 module Scratch where
-
+  open import OutsideIn.Prelude
   open import OutsideIn.X
   open import OutsideIn.Instantiations.Simple
   import OutsideIn
-  open OutsideIn(Simple)
+  data NoDCs : ℕ → Set where
+
+  open OutsideIn(Simple NoDCs)
 

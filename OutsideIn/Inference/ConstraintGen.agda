@@ -66,7 +66,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
                            → Constraint tv Extended
   genConstraintAlternative {ev}{tv} Γ (Con K →′ e) α β with Γ (DC K)
   ... | DC∀′ a , b · Q ⇒ τs ⟶ T = (Ⅎ′ a · (Ⅎ′ b · (let C  = genConstraint (Γ′ τs↑ Γ↑) e↑ δ
-                                                   in (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼ β↑)) ∧′ Tγ ∼ α↑))) 
+                                                   in (Imp (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼ β↑))) ∧′ Tγ ∼ α↑))) 
     where module pa = PlusN-m a
           module pb = PlusN-m b
           Tγ = (Type-f.map pb.unit (applyAll a (TVar T)))
@@ -88,8 +88,8 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
   genConstraintAlternatives Γ (esac) α β = ε
   genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative Γ a α β ∧′ genConstraintAlternatives Γ as α β
   genConstraint {tv = tv} Γ (Var (DC d)) τ with Γ (DC d)
-  ... | DC∀′ a , b · q ⇒ τs ⟶ k = Ⅎ′ a · (Ⅎ′ b · ( Q-c q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼
-                                                              (funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) )))
+  ... | DC∀′ a , b · q ⇒ τs ⟶ k = Ⅎ′ a · (Ⅎ′ b · ( QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼
+                                                            (funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) )))
    where module pa = PlusN-m a
          module pb = PlusN-m b
          module paf = PlusN-f a
@@ -99,7 +99,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
 
 
   genConstraint Γ (Var (N v)) τ with Γ (N v)
-  ... | ∀′ n · q ⇒ t = Ⅎ′ n · Q-c q ∧′ Type-f.map pn.unit τ ∼ t
+  ... | ∀′ n · q ⇒ t = Ⅎ′ n · QC q ∧′ Type-f.map pn.unit τ ∼ t
    where module pn = PlusN-m n
 
   genConstraint Γ (e₁ · e₂) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ ↑Γ) (e₁ ↑e ↑e ↑e) α₀ 
@@ -132,7 +132,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
                                                                                               ((x ↑e ↑e) ↑ne)
                                                                                               α₀
                                                                             C₂ = genConstraint Γ′ y′ α₁
-                                                                            C₁ = ∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼ t′)
+                                                                            C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼ t′))
                                                                          in (C₁ ∧′ C₂ ∧′ ((τ ↑t ↑t) ↑nt) ∼ α₁))
     where module p2m = PlusN-m 2
           module p2f = PlusN-f 2

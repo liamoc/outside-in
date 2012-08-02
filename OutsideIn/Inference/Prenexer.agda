@@ -1,7 +1,6 @@
 open import OutsideIn.Prelude
 open import OutsideIn.X
 module OutsideIn.Inference.Prenexer(x : X) where  
-  open import Data.Product
   import OutsideIn.Constraints as C
   import OutsideIn.Expressions as E
   open E(x)

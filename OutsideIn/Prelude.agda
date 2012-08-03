@@ -18,6 +18,16 @@ module OutsideIn.Prelude where
 
    postulate extensionality : Extensionality Level.zero Level.zero
 
+   module Shapes where
+
+     -- Used throughout to show structure preserving operations preserve structure, in order to maintain structural recursion.
+     data Shape : Set where
+       Nullary : Shape
+       Unary : Shape → Shape
+       Binary : Shape → Shape → Shape
+
+
+
    module Functors where
 
      import Data.Vec as V 
@@ -335,3 +345,4 @@ module OutsideIn.Prelude where
    open PlusN-Type public
    open Functors public
    open Monads public
+   open Shapes public

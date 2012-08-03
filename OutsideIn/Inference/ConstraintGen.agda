@@ -34,10 +34,10 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
     _↑c : {tv : Set}{s : Strata} → (Constraint tv s) → (Constraint (Ⓢ tv) s)
     _↑c {s = s} = upindex ⦃ constraint-is-functor {s} ⦄
 
-    _↑e : {ev tv : Set}{r : Arity} → (Expression ev tv r) → (Expression ev (Ⓢ tv) r)
+    _↑e : {ev tv : Set}{r : Shape} → (Expression ev tv r) → (Expression ev (Ⓢ tv) r)
     _↑e = upindex ⦃ expression-is-functor₂ ⦄
 
-    _↑a : {ev tv : Set}{r : Arity} → (Alternatives ev tv r) → (Alternatives ev (Ⓢ tv) r)
+    _↑a : {ev tv : Set}{r : Shape} → (Alternatives ev tv r) → (Alternatives ev (Ⓢ tv) r)
     _↑a = upindex ⦃ alternatives-is-functor₂ ⦄
 
     _↑t : {tv : Set} → (Type tv) → (Type (Ⓢ tv))
@@ -60,9 +60,9 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
   (⟨ τ ⟩, Γ) (N (suc n)) = Γ (N n)
   (⟨ τ ⟩, Γ) (DC n) = Γ (DC n)
 
-  genConstraint : {ev : Set}{tv : Set}{r : Arity}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv) 
+  genConstraint : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv) 
                 → Constraint tv Extended
-  genConstraintAlternative : {ev : Set}{tv : Set}{r : Arity}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Alternative ev tv r)(α β : Type tv) 
+  genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Alternative ev tv r)(α β : Type tv) 
                            → Constraint tv Extended
   genConstraintAlternative {ev}{tv} Γ (Con K →′ e) α β with Γ (DC K)
   ... | DC∀′ a , b · Q ⇒ τs ⟶ T = (Ⅎ′ a · (Ⅎ′ b · (let C  = genConstraint (Γ′ τs↑ Γ↑) e↑ δ
@@ -83,7 +83,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           Γ′ [] Γ = Γ 
           Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · εq ⇒ τ ⟩, Γ )
    
-  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Arity}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Alternatives ev tv r)(α β : Type tv) 
+  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Alternatives ev tv r)(α β : Type tv) 
                             → Constraint tv Extended
   genConstraintAlternatives Γ (esac) α β = ε
   genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative Γ a α β ∧′ genConstraintAlternatives Γ as α β

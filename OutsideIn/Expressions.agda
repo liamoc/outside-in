@@ -3,7 +3,6 @@ open import OutsideIn.X
 module OutsideIn.Expressions(x : X) where  
 --  open import OutsideIn.Types
   import OutsideIn.TypeSchema as TS
-
   open TS(x)
   open X(x)
 
@@ -11,10 +10,6 @@ module OutsideIn.Expressions(x : X) where
 
   -- We index expressions by this structure to inform Agda of the termination order of syntax-directed rules
   -- (de Bruijn indices changing mean that this is not obvious to Agda).
-  data Arity : Set where
-    Nullary : Arity
-    Unary : Arity → Arity
-    Binary : Arity → Arity → Arity
 
   data Name (n : Set) : NameType → Set where
     N : n → Name n Regular
@@ -24,14 +19,14 @@ module OutsideIn.Expressions(x : X) where
     Con : ∀ {d} → dc d → Pattern d
 
   mutual 
-    data Alternative (ev tv : Set) : Arity → Set where
-      _→′_ : ∀ {n : ℕ}{r : Arity} → Pattern n → Expression (ev ⨁ n) tv r → Alternative ev tv (Unary r)
+    data Alternative (ev tv : Set) : Shape → Set where
+      _→′_ : ∀ {n : ℕ}{r : Shape} → Pattern n → Expression (ev ⨁ n) tv r → Alternative ev tv (Unary r)
 
-    data Alternatives (ev tv : Set) : Arity → Set where
+    data Alternatives (ev tv : Set) : Shape → Set where
       esac : Alternatives ev tv Nullary
       _∣_  : ∀ {r₁ r₂} → Alternative ev tv r₁ → Alternatives ev tv r₂ → Alternatives ev tv (Binary r₁ r₂)
 
-    data Expression (ev tv : Set) : Arity → Set where
+    data Expression (ev tv : Set) : Shape → Set where
       Var : ∀ {x} → Name ev x → Expression ev tv Nullary
       λ′_ : ∀ {a} → Expression (Ⓢ ev) tv a → Expression ev tv (Unary a)
       _·_ : ∀ {a a′} → Expression ev tv a → Expression ev tv a′ → Expression ev tv (Binary a a′)
@@ -86,9 +81,9 @@ module OutsideIn.Expressions(x : X) where
     map-fmap-alt₂ f (x ∣ xs) = fmap-alt₂ f x ∣ map-fmap-alt₂ f xs
 
   private
-    fmap-alt-id₁ : {A tv : Set} {f : A → A}{r : Arity} → isIdentity f → isIdentity (fmap-alt₁ {A}{A}{tv}{r} f)   
-    map-fmap-alt-id₁ : ∀ {a}{tv}{f : a → a}{r : Arity} → isIdentity f → isIdentity (map-fmap-alt₁  {a}{a}{tv}{r} f)
-    fmap-exp-id₁ : ∀{A tv : Set}{r : Arity} {f : A → A} → isIdentity f → isIdentity (fmap-exp₁ {A}{A}{tv}{r} f)   
+    fmap-alt-id₁ : {A tv : Set} {f : A → A}{r : Shape} → isIdentity f → isIdentity (fmap-alt₁ {A}{A}{tv}{r} f)   
+    map-fmap-alt-id₁ : ∀ {a}{tv}{f : a → a}{r : Shape} → isIdentity f → isIdentity (map-fmap-alt₁  {a}{a}{tv}{r} f)
+    fmap-exp-id₁ : ∀{A tv : Set}{r : Shape} {f : A → A} → isIdentity f → isIdentity (fmap-exp₁ {A}{A}{tv}{r} f)   
     fmap-alt-id₁ {A}{f} f-is-id {_→′_ {n} p x} = cong (_→′_ p) (fmap-exp-id₁ (pn.identity f-is-id))
       where module pn = PlusN-f n       
     map-fmap-alt-id₁ {r = Unary _} f-is-id {}
@@ -107,9 +102,9 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {case x of alts} = cong₂ case_of_ (fmap-exp-id₁ f-is-id) (map-fmap-alt-id₁ f-is-id)
 
   private
-    fmap-alt-id₂ : {A ev : Set}{r : Arity}{f : A → A} → isIdentity f → isIdentity (fmap-alt₂ {A}{A}{ev}{r} f)   
-    map-fmap-alt-id₂ : ∀ {a}{ev}{r : Arity}{f : a → a} → isIdentity f → isIdentity (map-fmap-alt₂  {a}{a}{ev}{r} f)
-    fmap-exp-id₂ : ∀{A ev : Set}{r : Arity} {f : A → A} → isIdentity f → isIdentity (fmap-exp₂ {A}{A}{ev}{r} f)   
+    fmap-alt-id₂ : {A ev : Set}{r : Shape}{f : A → A} → isIdentity f → isIdentity (fmap-alt₂ {A}{A}{ev}{r} f)   
+    map-fmap-alt-id₂ : ∀ {a}{ev}{r : Shape}{f : a → a} → isIdentity f → isIdentity (map-fmap-alt₂  {a}{a}{ev}{r} f)
+    fmap-exp-id₂ : ∀{A ev : Set}{r : Shape} {f : A → A} → isIdentity f → isIdentity (fmap-exp₂ {A}{A}{ev}{r} f)   
     fmap-alt-id₂ f-is-id {_→′_ {n} p x} = cong (_→′_ p) (fmap-exp-id₂ f-is-id)
       where module pn = PlusN-f n       
     map-fmap-alt-id₂ f-is-id {esac} = refl
@@ -133,11 +128,11 @@ module OutsideIn.Expressions(x : X) where
 
 
   private
-    fmap-alt-comp₁ : {r : Arity} {A B C tv : Set} {f : A → B}{g : B → C} {x : Alternative A tv r} 
+    fmap-alt-comp₁ : {r : Shape} {A B C tv : Set} {f : A → B}{g : B → C} {x : Alternative A tv r} 
                   → fmap-alt₁ (g ∘ f) x ≡ fmap-alt₁ g (fmap-alt₁ f x)
-    fmap-exp-comp₁ : {r : Arity}{tv A B C : Set} {f : A → B} {g : B → C} {x : Expression A tv r} 
+    fmap-exp-comp₁ : {r : Shape}{tv A B C : Set} {f : A → B} {g : B → C} {x : Expression A tv r} 
                    → fmap-exp₁ (g ∘ f) x ≡ fmap-exp₁ g (fmap-exp₁ f x)
-    map-fmap-alt-comp₁ : ∀{r : Arity}{A B C tv : Set} {f : A → B} {g : B → C} {alts : Alternatives A tv r} 
+    map-fmap-alt-comp₁ : ∀{r : Shape}{A B C tv : Set} {f : A → B} {g : B → C} {alts : Alternatives A tv r} 
                       → map-fmap-alt₁ (g ∘ f) alts ≡ map-fmap-alt₁ g (map-fmap-alt₁ f alts)
     fmap-alt-comp₁ {Nullary}{x = ()} 
     fmap-alt-comp₁ {Binary _ _}{x = ()} 
@@ -171,9 +166,9 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp-comp₁ {f = f}{g}{x = case x of alts } = cong₂ case_of_ (fmap-exp-comp₁ {f = f}{g}{x}) map-fmap-alt-comp₁
 
   private
-    fmap-alt-comp₂ : {A B C ev : Set}{r : Arity} {f : A → B} {g : B → C} {x : Alternative ev A r} 
+    fmap-alt-comp₂ : {A B C ev : Set}{r : Shape} {f : A → B} {g : B → C} {x : Alternative ev A r} 
                    → fmap-alt₂ (g ∘ f) x ≡ fmap-alt₂ g (fmap-alt₂ f x)
-    fmap-exp-comp₂ : {A B C ev : Set}{r : Arity} {f : A → B} {g : B → C} {x : Expression ev A r} 
+    fmap-exp-comp₂ : {A B C ev : Set}{r : Shape} {f : A → B} {g : B → C} {x : Expression ev A r} 
                    → fmap-exp₂ (g ∘ f) x ≡ fmap-exp₂ g (fmap-exp₂ f x)
     map-fmap-alt-comp₂ : ∀{r}{A B C ev : Set} {f : A → B} {g : B → C} {alts : Alternatives ev A r} 
                        → map-fmap-alt₂ (g ∘ f) alts ≡ map-fmap-alt₂ g (map-fmap-alt₂ f alts)

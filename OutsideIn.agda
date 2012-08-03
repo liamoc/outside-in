@@ -19,7 +19,7 @@ module OutsideIn(x : X) where
    open S (x)
 
    go : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv) 
-                → ∃ (λ m → SeparatedConstraint (tv ⨁ m)) 
+                → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
    go Γ e τ with prenex (genConstraint Γ e τ)
    ... | m , c = m , separate c
 

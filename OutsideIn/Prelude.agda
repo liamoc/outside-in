@@ -136,6 +136,7 @@ module OutsideIn.Prelude where
 
    module Ⓢ-Type where
      open Functors
+     open Monads
  
      data Ⓢ (τ : Set) : Set where
        suc : τ → Ⓢ τ
@@ -145,6 +146,12 @@ module OutsideIn.Prelude where
      cata-Ⓢ : {a b : Set} → b → (a → b) → Ⓢ a → b
      cata-Ⓢ nil something zero = nil
      cata-Ⓢ nil something (suc n) = something n     
+
+     sequence-Ⓢ : ∀ {m}{b} → ⦃ monad : Monad m ⦄ →  Ⓢ (m b) → m (Ⓢ b)
+     sequence-Ⓢ ⦃ m ⦄ (suc n) = map suc n
+       where open Functor (Monad.is-functor m)
+     sequence-Ⓢ ⦃ m ⦄ (zero) = unit zero
+       where open Monad (m)
 
      private
        fmap-Ⓢ : ∀ {a b} → (a → b) → Ⓢ a → Ⓢ b
@@ -162,8 +169,6 @@ module OutsideIn.Prelude where
 
      Ⓢ-is-functor : Functor Ⓢ
      Ⓢ-is-functor = record {map = fmap-Ⓢ; identity = fmap-Ⓢ-id; composite = fmap-Ⓢ-comp}
-   
-     open Monads
 
      private
        join-Ⓢ : ∀ {x} → Ⓢ (Ⓢ x) → Ⓢ x
@@ -197,6 +202,7 @@ module OutsideIn.Prelude where
      Ⓢ-Trans : (Set → Set) → Set → Set
      Ⓢ-Trans m x = m (Ⓢ x)
 
+     
      Ⓢ-Trans-is-trans : MonadTrans (Ⓢ-Trans)
      Ⓢ-Trans-is-trans = record { produces-monad = λ mm → let open Monad mm in 
                                                         record { point = λ x → lift ⦃ mm ⦄ (unit x)
@@ -324,6 +330,7 @@ module OutsideIn.Prelude where
 
      open Ⓢ-Type
      open Monads
+     open Functors
 
      PlusN : (n : ℕ) → Set → Set
      PlusN zero = id
@@ -333,9 +340,12 @@ module OutsideIn.Prelude where
      PlusN-is-monad {zero} = id-is-monad
      PlusN-is-monad {suc n} = MonadTrans.produces-monad Ⓢ-Trans-is-trans (PlusN-is-monad {n})
 
-
-
      _⨁_ = flip PlusN
+
+     sequence-PlusN : ∀ {m}{n}{b} → ⦃ monad : Monad m ⦄ → (m b) ⨁ n → m (b ⨁ n)
+     sequence-PlusN {n = zero} x = x
+     sequence-PlusN {n = suc n} ⦃ m ⦄ x = sequence-PlusN {n = n}⦃ m ⦄ (PlusN-f.map (sequence-Ⓢ ⦃ m ⦄) x)
+       where module PlusN-f = Functor (Monad.is-functor (PlusN-is-monad {n}))
 
      PlusN-collect : ∀ {n}{a b} → n ⨁ (a + b) ≡ (n ⨁ a) ⨁ b
      PlusN-collect {n}{zero} = refl

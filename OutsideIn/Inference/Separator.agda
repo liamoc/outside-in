@@ -30,10 +30,13 @@ module OutsideIn.Inference.Separator(x : X) where
   ... | s , v = s , SC (simpl c) v
 
 
+
+
+
   -- Substitution for separated constraints
   substituteSep : ∀ {s}{a b} → (a → Type b) → SeparatedConstraint a s → SeparatedConstraint b s
   substituteImp : ∀ {s}{a b} → (a → Type b) → Implications a s → Implications b s
-  substituteSep f (SC qc imps) = SC (constraint-types (join ∘ map f) qc) (substituteImp f imps)
+  substituteSep f (SC qc imps) = SC (qc-substitute f qc) (substituteImp f imps)
     where open Monad (type-is-monad)
           open Functor (type-is-functor)
   substituteImp f (imp-ε) = imp-ε

@@ -4,6 +4,7 @@ module OutsideIn.Inference(x : X) where
   import OutsideIn.TopLevel as TL
   import OutsideIn.TypeSchema as TS
   import OutsideIn.Expressions as E
+  import OutsideIn.Environments as V
   import OutsideIn.Constraints as C
   import OutsideIn.Inference.Solver as S
   import OutsideIn.Inference.Prenexer as P
@@ -17,37 +18,46 @@ module OutsideIn.Inference(x : X) where
   open TL(x)
   open TS(x)
   open E(x)
+  open V(x)
   open C(x)
 
+  private
+    module PlusN-m {n} = Monad(PlusN-is-monad {n})
+    module QC-f = Functor(qconstraint-is-functor)
+    module Exp-f {ev}{s} = Functor(expression-is-functor₂ {ev}{s})
+    module TS-f {x} = Functor(type-schema-is-functor {x})
+    module Type-m  = Monad(type-is-monad) 
+    module Type-f  = Functor(type-is-functor)
 
-  module PlusN-m {n} = Monad(PlusN-is-monad {n})
-  module QC-f = Functor(qconstraint-is-functor)
-  module Exp-f {ev}{s} = Functor(expression-is-functor₂ {ev}{s})
-  module TS-f {x} = Functor(type-schema-is-functor {x})
-  module Type-m  = Monad(type-is-monad)
-  generate : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv) 
-               → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
-  generate Γ e τ with prenex (genConstraint Γ e τ)
-  ... | m , c = m , separate c
+    generate : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv)  
+                 → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
+    generate Γ e τ with prenex (genConstraint Γ e τ)
+    ... | m , c = m , separate c
 
-  solve : {x : Set} → (n : ℕ) → AxiomScheme →  QConstraint (x ⨁ n) →  ∃ (λ m → ∃ (SeparatedConstraint ((x ⨁ n )⨁ m)))
-                    → Ⓢ (∃ (λ m → SimplifierResult (x ⨁ n) m))
-  solve n axioms given (m , s , c) with solver m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
-  ... | zero = zero
-  ... | suc v = suc (m , v)
-
-  _↑Γ : {x : NameType} {ev tv : Set} → (Name ev x → TypeSchema tv x) → (Name ev x → TypeSchema (Ⓢ tv) x)
-  Γ ↑Γ = TS-f.map suc ∘ Γ
+    generate′ : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Expression ev tv r)
+                 → ∃ (λ m → Type (tv ⨁ m) × ∃ (SeparatedConstraint (tv ⨁ m))) 
+    generate′ Γ e with prenex (genConstraint (Γ ↑Γ) (Exp-f.map suc e) (Type-m.unit zero))
+    ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
 
 
-  data _,_⊢_ {ev tv : Set}(Q : AxiomScheme)(Γ : ∀ {x} →  Name ev x → TypeSchema tv x){s : Shape} : Program ev tv → Set where
-    Empty : Q , Γ ⊢ end 
-    BindA : ∀ {s}{n}{e : Expression ev (tv ⨁ n) s}{prog}{Qc}{τ}{m}{θ} 
-          → solve n Q Qc (generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ) ≡ suc (m , Solved θ) 
-          → Q , {!!} ⊢ prog
-          → Q , Γ ⊢ (bind₂ n · e ∷ Qc ⇒ τ , prog)
+    solve : ∀ {x : Set}(m : ℕ) → AxiomScheme →  QConstraint x → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
+    solve {x} m axioms given (s , c) = solver m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
 
-    Bind₁ :  ∀ {s}{e : Expression ev tv s}{prog}{Qc}{m}{θ}  
-          → solve 0 Q (QC-f.map suc Qc) (generate (Γ ↑Γ) (Exp-f.map suc e) (Type-m.unit zero)) ≡ suc (m , Solved θ)  
-          → Q , ? ⊢ prog
-          → Q , Γ ⊢ (bind₁ e , prog)
+
+
+  open Type-m
+  open import Data.Bool
+
+  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Program ev tv → Bool
+  go Q Γ end = true
+  go Q Γ (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
+  ... | fuv , C with solve fuv Q Qc C
+  ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) prog
+  ...     | _ =  false
+  go Q Γ (bind₁ e , prog) with generate′ Γ e  
+  ... | fuv , τ , C with solve fuv Q tautologyConstraint C
+  ...     | suc (Solved θ) = go Q (⟨ ∀′ 0 · tautologyConstraint ⇒ (τ >>= θ) ⟩, Γ) prog
+  ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) prog
+  ...     | zero = false
+
+ 

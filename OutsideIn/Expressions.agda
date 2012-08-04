@@ -32,10 +32,10 @@ module OutsideIn.Expressions(x : X) where
       _·_ : ∀ {a a′} → Expression ev tv a → Expression ev tv a′ → Expression ev tv (Binary a a′)
       let₁_in′_ : ∀ {a a′} → Expression ev tv a → Expression (Ⓢ ev) tv a′ → Expression ev tv (Binary a a′)
       let₂_∷_in′_ : ∀ {a a′} → Expression ev tv a → Type tv → Expression (Ⓢ ev) tv a′ → Expression ev tv (Binary a a′)
-      let₃_∷∀_·_⇒_in′_ : ∀ {a a′} → Expression ev tv a → (n : ℕ) 
+      let₃_·_∷_⇒_in′_ : ∀ {a a′} → (n : ℕ) → Expression ev (tv ⨁ n) a  
                                   → QConstraint (tv ⨁ n) 
                                   → Type (tv ⨁ n) 
-                                  → Expression (Ⓢ ev) (tv ⨁ n) a′ 
+                                  → Expression (Ⓢ ev) tv a′ 
                                   → Expression ev tv (Binary a a′)
       case_of_ : ∀ {r₁ r₂} → Expression ev tv r₁ → Alternatives ev tv r₂ → Expression ev tv (Binary r₁ r₂)
 
@@ -58,7 +58,7 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp₁ f (x · y) = (fmap-exp₁ f x) · (fmap-exp₁ f y)
     fmap-exp₁ f (let₁ x in′ y) = let₁ (fmap-exp₁ f x) in′ (fmap-exp₁ (Ⓢ-f.map f) y)
     fmap-exp₁ f (let₂ x ∷ τ in′ y) = let₂ (fmap-exp₁ f x) ∷ τ in′ (fmap-exp₁ (Ⓢ-f.map f) y)
-    fmap-exp₁ f (let₃ x ∷∀ n · Q ⇒ τ in′ y) = let₃ fmap-exp₁ f x ∷∀ n · Q ⇒ τ in′ fmap-exp₁ (Ⓢ-f.map f) y
+    fmap-exp₁ f (let₃ n · x ∷ Q ⇒ τ in′ y) = let₃  n · fmap-exp₁ f x ∷ Q ⇒ τ in′ fmap-exp₁ (Ⓢ-f.map f) y
     fmap-exp₁ f (case x of alts) = case (fmap-exp₁ f x) of map-fmap-alt₁ f alts
     map-fmap-alt₁ f esac = esac
     map-fmap-alt₁ f (x ∣ xs) = fmap-alt₁ f x ∣ map-fmap-alt₁ f xs
@@ -73,8 +73,8 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp₂ f (x · y) = fmap-exp₂ f x · fmap-exp₂ f y
     fmap-exp₂ f (let₁ x in′ y) = let₁ fmap-exp₂ f x in′ fmap-exp₂ f y
     fmap-exp₂ f (let₂ x ∷ τ in′ y) = let₂ fmap-exp₂ f x ∷ Type-f.map f τ in′ fmap-exp₂ f y
-    fmap-exp₂ f (let₃ x ∷∀ n · Q ⇒ τ in′ y) = let₃ fmap-exp₂ f x ∷∀ n · QC-f.map (pn.map f) Q ⇒ Type-f.map (pn.map f) τ 
-                                               in′ fmap-exp₂ (pn.map f) y
+    fmap-exp₂ f (let₃ n · x ∷ Q ⇒ τ in′ y) = let₃ n · fmap-exp₂ (pn.map f) x ∷ QC-f.map (pn.map f) Q ⇒ Type-f.map (pn.map f) τ 
+                                               in′ fmap-exp₂ f y
       where module pn = PlusN-f n
     fmap-exp₂ f (case x of alts) = case (fmap-exp₂ f x) of map-fmap-alt₂ f alts
     map-fmap-alt₂ f esac = esac
@@ -96,7 +96,7 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {let₁ x in′ y} = cong₂ let₁_in′_ (fmap-exp-id₁ f-is-id) (fmap-exp-id₁ (Ⓢ-f.identity f-is-id))
     fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {let₂ x ∷ τ in′ y} = cong₂ (λ a b → let₂ a ∷ τ in′ b) (fmap-exp-id₁ f-is-id) 
                                                                                                   (fmap-exp-id₁ (Ⓢ-f.identity f-is-id))
-    fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {let₃ x ∷∀ n · Q ⇒ τ in′ y} = cong₂ (λ a b → let₃ a ∷∀ n · Q ⇒ τ in′ b) 
+    fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {let₃ n · x ∷ Q ⇒ τ in′ y} = cong₂ (λ a b → let₃ n · a ∷ Q ⇒ τ in′ b) 
                                                                                 (fmap-exp-id₁ f-is-id) 
                                                                                 (fmap-exp-id₁ (Ⓢ-f.identity f-is-id))
     fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {case x of alts} = cong₂ case_of_ (fmap-exp-id₁ f-is-id) (map-fmap-alt-id₁ f-is-id)
@@ -116,11 +116,11 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp-id₂ {r = Binary r₁ r₂} f-is-id {let₂ x ∷ τ in′ y} = cong₃ let₂_∷_in′_ (fmap-exp-id₂ f-is-id) 
                                                                                    (Type-f.identity f-is-id) 
                                                                                    (fmap-exp-id₂ f-is-id)
-    fmap-exp-id₂ {r = Binary r₁ r₂} f-is-id {let₃ x ∷∀ n · Q ⇒ τ in′ y} = cong₄ (λ a b c d → let₃ a ∷∀ n · b ⇒ c in′ d) 
-                                                                                (fmap-exp-id₂ f-is-id) 
+    fmap-exp-id₂ {r = Binary r₁ r₂} f-is-id {let₃ n · x ∷ Q ⇒ τ in′ y} = cong₄ (λ a b c d → let₃ n · a ∷ b ⇒ c in′ d) 
+                                                                                (fmap-exp-id₂ (pn.identity f-is-id)) 
                                                                                 (QC-f.identity (pn.identity f-is-id))
                                                                                 (Type-f.identity (pn.identity f-is-id)) 
-                                                                                (fmap-exp-id₂ (pn.identity f-is-id)) 
+                                                                                (fmap-exp-id₂ f-is-id)
       where module pn = PlusN-f n
     fmap-exp-id₂ {r = Binary r₁ r₂} f-is-id {case x of alts} = cong₂ case_of_ (fmap-exp-id₂ f-is-id) (map-fmap-alt-id₂ f-is-id)
 
@@ -158,7 +158,7 @@ module OutsideIn.Expressions(x : X) where
                                                             (trans (cong (λ t → fmap-exp₁ t y) 
                                                                          (extensionality (λ _ → Ⓢ-f.composite )))  
                                                                    (fmap-exp-comp₁ {f = Ⓢ-f.map f}{Ⓢ-f.map g}{y}))
-    fmap-exp-comp₁ {f = f}{g}{x = let₃ x ∷∀ n · Q ⇒ τ in′ y} = cong₂ (λ a b → let₃ a ∷∀ n · Q ⇒ τ in′ b)
+    fmap-exp-comp₁ {f = f}{g}{x = let₃ n · x ∷ Q ⇒ τ in′ y} = cong₂ (λ a b → let₃ n · a ∷ Q ⇒ τ in′ b)
                                                                      (fmap-exp-comp₁ {f = f}{g}{x})
                                                                      (trans (cong (λ t → fmap-exp₁ t y) 
                                                                                   (extensionality (λ _ → Ⓢ-f.composite ))) 
@@ -182,13 +182,13 @@ module OutsideIn.Expressions(x : X) where
     fmap-exp-comp₂ {x = x · y } = cong₂ _·_ fmap-exp-comp₂ fmap-exp-comp₂
     fmap-exp-comp₂ {x = let₁ x in′ y } = cong₂ let₁_in′_ fmap-exp-comp₂ fmap-exp-comp₂
     fmap-exp-comp₂ {x = let₂ x ∷ τ in′ y } = cong₃ let₂_∷_in′_ fmap-exp-comp₂ Type-f.composite fmap-exp-comp₂
-    fmap-exp-comp₂ {x = let₃ x ∷∀ n · Q ⇒ τ in′ y } = cong₄ (λ a b c d → let₃ a ∷∀ n · b ⇒ c in′ d)
-                                                            fmap-exp-comp₂ 
-                                                            (trans (cong (λ t → QC-f.map t Q) (extensionality (λ _ → pn.composite)))
-                                                                   QC-f.composite)
-                                                            (trans (cong (λ t → Type-f.map t τ) (extensionality (λ _ → pn.composite))) 
-                                                                   Type-f.composite) 
-                                                            (trans (cong (λ t → fmap-exp₂ t y) (extensionality (λ _ → pn.composite))) fmap-exp-comp₂)
+    fmap-exp-comp₂ {x = let₃ n · x ∷ Q ⇒ τ in′ y } = cong₄ (λ a b c d → let₃ n · a ∷ b ⇒ c in′ d)
+                                                           (trans (cong (λ t → fmap-exp₂ t x) (extensionality (λ _ → pn.composite))) fmap-exp-comp₂)
+                                                           (trans (cong (λ t → QC-f.map t Q) (extensionality (λ _ → pn.composite)))
+                                                                  QC-f.composite)
+                                                           (trans (cong (λ t → Type-f.map t τ) (extensionality (λ _ → pn.composite))) 
+                                                                  Type-f.composite) 
+                                                           fmap-exp-comp₂
       where module pn = PlusN-f n
     fmap-exp-comp₂ {x = case x of alts } = cong₂ case_of_ fmap-exp-comp₂ map-fmap-alt-comp₂
 

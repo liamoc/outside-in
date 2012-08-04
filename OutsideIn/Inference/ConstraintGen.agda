@@ -128,11 +128,11 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           α₁ = TVar (suc zero)
           Γ′ : ∀{x} → Name (Ⓢ ev) x → TypeSchema (tv ⨁ 2) x
           Γ′ = ⟨ ∀′ 0 · εq ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
-  genConstraint {ev}{tv} Γ (let₃ x ∷∀ n · Q ⇒ t in′ y)  τ = Ⅎ Ⅎ Ⅎ′ n · (let C = genConstraint ((Γ ↑Γ ↑Γ) ↑nΓ)
-                                                                                              ((x ↑e ↑e) ↑ne)
+  genConstraint {ev}{tv} Γ (let₃ n · x ∷ Q ⇒ t in′ y)  τ = Ⅎ Ⅎ Ⅎ′ n · (let C = genConstraint ((Γ ↑Γ ↑Γ) ↑nΓ)
+                                                                                              (x′)
                                                                                               α₀
-                                                                            C₂ = genConstraint Γ′ y′ α₁
-                                                                            C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼ t′))
+                                                                           C₂ = genConstraint Γ′ ((y ↑e ↑e) ↑ne) α₁
+                                                                           C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼ t′))
                                                                          in (C₁ ∧′ C₂ ∧′ ((τ ↑t ↑t) ↑nt) ∼ α₁))
     where module p2m = PlusN-m 2
           module p2f = PlusN-f 2
@@ -142,9 +142,9 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           _↑nΓ = _∘_ (TypeSchema-f.map pnm.unit)
           _↑ne = Exp-f₂.map pnm.unit
           _↑nt = Type-f.map pnm.unit
-          Q′ = (QC-f.map (pnf.map p2m.unit) Q) 
+          Q′ = (QC-f.map (pnf.map p2m.unit) Q)
           t′ = Type-f.map (pnf.map p2m.unit) t
-          y′ = (Exp-f₂.map (pnf.map p2m.unit) y)
+          x′ = Exp-f₂.map (pnf.map p2m.unit) x
           α₀ : Type ((tv ⨁ 2) ⨁ n)
           α₀ = Type-f.map pnm.unit (TVar zero)
           α₁ : Type ((tv ⨁ 2) ⨁ n)

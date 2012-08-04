@@ -13,18 +13,5 @@ module OutsideIn(x : X) where
    open C (x)
    open I (x)
 
- 
-
-
-
-   
-
---   open import OutsideIn.Types public
---   import OutsideIn.Inference.Simplifier as S   
---   open S(dc) public
-
---   open C(dc) public
---   open P(dc) public
-
 
    

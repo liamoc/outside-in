@@ -5,7 +5,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
   import OutsideIn.TypeSchema as TS
   import OutsideIn.Expressions as E
   import OutsideIn.Environments as V
-  open X(x) renaming (funType to _⟶_; appType to _··_; tautologyConstraint to εq)
+  open X(x) renaming (funType to _⟶_; appType to _··_)
   open C(x)
   open TS(x)
   open E(x)
@@ -54,13 +54,16 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
     applyAll zero x = x
     applyAll (suc n) x = applyAll n ((x ↑t) ·· (TVar zero))
 
-  genConstraint : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv) 
+  genConstraint : {ev : Set}{tv : Set}{r : Shape}
+                  (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv) 
                 → Constraint tv Extended
-  genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Alternative ev tv r)(α β : Type tv) 
+  genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape}
+                             (Γ : Environment ev tv)(e : Alternative ev tv r)(α β : Type tv) 
                            → Constraint tv Extended
   genConstraintAlternative {ev}{tv} Γ (Con K →′ e) α β with Γ (DC K)
-  ... | DC∀′ a , b · Q ⇒ τs ⟶ T = (Ⅎ′ a · (Ⅎ′ b · (let C  = genConstraint (Γ′ τs↑ Γ↑) e↑ δ
-                                                   in (Imp (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼ β↑))) ∧′ Tγ ∼ α↑))) 
+  ... | DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (Γ′ τs↑ Γ↑) e↑ δ
+                                                  in (Imp (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼′ β↑))) ∧′ 
+                                                     Tγ ∼′ α↑ 
     where module pa = PlusN-m a
           module pb = PlusN-m b
           Tγ = (Type-f.map pb.unit (applyAll a (TVar T)))
@@ -75,64 +78,69 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           δ = TVar (zero)
           Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
           Γ′ [] Γ = Γ 
-          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · εq ⇒ τ ⟩, Γ )
+          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
    
-  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Alternatives ev tv r)(α β : Type tv) 
+  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}
+                              (Γ : Environment ev tv)(e : Alternatives ev tv r)(α β : Type tv) 
                             → Constraint tv Extended
-  genConstraintAlternatives Γ (esac) α β = ε
-  genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative Γ a α β ∧′ genConstraintAlternatives Γ as α β
+  genConstraintAlternatives Γ (esac) α β = ε′
+  genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative  Γ a  α β 
+                                          ∧′ genConstraintAlternatives Γ as α β
   genConstraint {tv = tv} Γ (Var (DC d)) τ with Γ (DC d)
-  ... | DC∀′ a , b · q ⇒ τs ⟶ k = Ⅎ′ a · (Ⅎ′ b · ( QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼
-                                                            (funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) )))
+  ... | DC∀′ a , b · q ⇒ τs ⟶ k = let τ′ = funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) 
+                                    in Ⅎ′ a · Ⅎ′ b · QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼′ τ′
    where module pa = PlusN-m a
          module pb = PlusN-m b
          module paf = PlusN-f a
          funType : ∀{tv}{n} → Vec (Type tv) n → Type tv → Type tv
          funType [] t = t
          funType (x ∷ xs) t = x ⟶ (funType xs t) 
+         
 
 
   genConstraint Γ (Var (N v)) τ with Γ (N v)
-  ... | ∀′ n · q ⇒ t = Ⅎ′ n · QC q ∧′ Type-f.map pn.unit τ ∼ t
+  ... | ∀′ n · q ⇒ t = Ⅎ′ n · QC q ∧′ Type-f.map pn.unit τ ∼′ t
    where module pn = PlusN-m n
 
   genConstraint Γ (e₁ · e₂) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ ↑Γ) (e₁ ↑e ↑e ↑e) α₀ 
                                     C₂ = genConstraint (Γ ↑Γ ↑Γ ↑Γ) (e₂ ↑e ↑e ↑e) α₁
-                                 in Ⅎ Ⅎ Ⅎ (C₁ ∧′ C₂ ∧′ α₀ ∼ (α₁ ⟶ α₂) ∧′ (τ ↑t ↑t ↑t) ∼ α₂)
+                                 in Ⅎ Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ α₀ ∼′ (α₁ ⟶ α₂) ∧′ (τ ↑t ↑t ↑t) ∼′ α₂
     where α₀ = TVar (zero)
           α₁ = TVar (suc zero)
           α₂ = TVar (suc (suc zero))
   genConstraint {ev}{tv} Γ (λ′ e′) τ = let C = genConstraint Γ′ (e′ ↑e ↑e) α₁ 
-                                        in Ⅎ Ⅎ (C ∧′ (τ ↑t ↑t) ∼ (α₀ ⟶ α₁)) 
+                                        in Ⅎ Ⅎ C ∧′ (τ ↑t ↑t) ∼′ (α₀ ⟶ α₁)
     where α₀ = TVar (zero)
           α₁ = TVar (suc zero)
           Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · εq ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
+          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
   genConstraint {ev}{tv} Γ (let₁ x in′ y) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀ 
                                                   C₂ = genConstraint Γ′ (y ↑e ↑e) α₁
-                                               in Ⅎ Ⅎ (C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼ α₁) 
+                                               in Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼′ α₁
     where α₀ = TVar (zero)
           α₁ = TVar (suc zero)
           Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · εq ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
+          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
   genConstraint {ev}{tv} Γ (let₂ x ∷ t in′ y) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀
                                                       C₂ = genConstraint Γ′ (y ↑e ↑e) α₁
-                                                   in Ⅎ Ⅎ (C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼ α₁ ∧′ α₀ ∼ (t ↑t ↑t))
+                                                   in Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼′ α₁ ∧′ 
+                                                          α₀ ∼′ (t ↑t ↑t)
     where α₀ = TVar zero
           α₁ = TVar (suc zero)
           Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · εq ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
-  genConstraint {ev}{tv} Γ (let₃ n · x ∷ Q ⇒ t in′ y)  τ = Ⅎ Ⅎ Ⅎ′ n · (let C = genConstraint ((Γ ↑Γ ↑Γ) ↑nΓ)
-                                                                                              (x′)
-                                                                                              α₀
-                                                                           C₂ = genConstraint Γ′ ((y ↑e ↑e) ↑ne) α₁
-                                                                           C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼ t′))
-                                                                         in (C₁ ∧′ C₂ ∧′ ((τ ↑t ↑t) ↑nt) ∼ α₁))
+          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
+  genConstraint {ev}{tv} Γ (let₃ n · x ∷ Q ⇒ t in′ y) τ = let 
+                                                            C  = genConstraint ((Γ ↑Γ ↑Γ) ↑nΓ) x′ α₀
+                                                            C₂ = genConstraint Γ′ ((y ↑e ↑e) ↑ne) α₁
+                                                            C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼′ t′))
+                                                          in Ⅎ Ⅎ Ⅎ′ n · C₁ ∧′ C₂ ∧′ 
+                                                                        ((τ ↑t ↑t) ↑nt) ∼′ α₁
     where module p2m = PlusN-m 2
           module p2f = PlusN-f 2
           module pnf = PlusN-f n
           module pnm = PlusN-m n
-          _↑nΓ : {x : NameType} {ev tv : Set} → (Name ev x → TypeSchema tv x) → (Name ev x → TypeSchema (tv ⨁ n) x)
+          _↑nΓ : {x : NameType} {ev tv : Set} 
+               → (Name ev x → TypeSchema tv x) → (Name ev x → TypeSchema (tv ⨁ n) x)
           _↑nΓ = _∘_ (TypeSchema-f.map pnm.unit)
           _↑ne = Exp-f₂.map pnm.unit
           _↑nt = Type-f.map pnm.unit
@@ -146,14 +154,12 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           Γ′ : Environment (Ⓢ ev) ((tv ⨁ 2) ⨁ n)
           Γ′ = TypeSchema-f.map (pnm.unit ∘ p2m.unit) ∘  ⟨ ∀′ n · Q ⇒  t ⟩, Γ
   genConstraint {ev}{tv} Γ (case x of alts)  τ = let C = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀ 
-                                                  in Ⅎ Ⅎ (C ∧′ (α₁ ∼ (τ ↑t ↑t) ∧′ genConstraintAlternatives (Γ ↑Γ ↑Γ) (alts ↑a ↑a) α₀ α₁))
+                                                  in Ⅎ Ⅎ (C ∧′ α₁ ∼′ (τ ↑t ↑t) 
+                                                       ∧′ genConstraintAlternatives (Γ ↑Γ ↑Γ) 
+                                                                                    (alts ↑a ↑a) 
+                                                                                    α₀ α₁)
        where α₀ : Type (tv ⨁ 2)
              α₀ = TVar zero
              α₁ : Type (tv ⨁ 2)
              α₁ = TVar (suc zero)
-{-
-  _⊢_∶_↝_ : {ev : Set}{tv : Set}{r : Arity}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv) 
-          → Constraint tv (Algorithmic Extended) → Set
-  _⊢_∶_↝_ = λ Γ e τ c →  genConstraint Γ e τ ≡ c  
--}
-   
+

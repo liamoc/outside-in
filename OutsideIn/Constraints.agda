@@ -20,11 +20,11 @@ module OutsideIn.Constraints( x : X) where
     Ⅎ_ : ∀ {x} → Constraint (Ⓢ n) x → Constraint n Extended
 
 
-  ε : ∀ {n}{x} → Constraint n x
-  ε = QC (tautologyConstraint)
+  ε′ : ∀ {n}{x} → Constraint n x
+  ε′ = QC ε
 
-  _∼_ : ∀ {n}{x} → Type n → Type n → Constraint n x
-  τ₁ ∼ τ₂ = QC (eqConstraint τ₁ τ₂)
+  _∼′_ : ∀ {n}{x} → Type n → Type n → Constraint n x
+  τ₁ ∼′ τ₂ = QC (τ₁ ∼ τ₂)
 
 
   Ⅎ′_·_ : {n : Set}(v : ℕ) → Constraint (n ⨁ v) Extended → Constraint n Extended
@@ -45,10 +45,13 @@ module OutsideIn.Constraints( x : X) where
 
   {- INSTANCES -}
   private
+    pn-is-functor = λ {n} → Monad.is-functor (PlusN-is-monad {n})
     module PlusN-f n = Functor (Monad.is-functor (PlusN-is-monad {n}))
     module Ⓢ-f = Functor Ⓢ-is-functor
     module Type-f = Functor (type-is-functor)
     module QC-f = Functor (qconstraint-is-functor)
+
+
 
   private 
     fmap-c : ∀ {s}{a b} → (a → b) → Constraint a s → Constraint b s
@@ -59,29 +62,29 @@ module OutsideIn.Constraints( x : X) where
     fmap-c f (Ⅎ C) = Ⅎ (fmap-c (Ⓢ-f.map f) C)
     fmap-c-id : ∀{s}{A : Set} {f : A → A} → isIdentity f → isIdentity (fmap-c {s} f)
     fmap-c-id {f = f} isid {QC x       } = cong QC (QC-f.identity isid)
-    fmap-c-id {f = f} isid {Imp (∃ n · Q ⊃ C)} = cong Imp (cong₂ (∃_·_⊃_ n) (QC-f.identity (pn.identity isid)) (fmap-c-id (pn.identity isid)))
+    fmap-c-id {f = f} isid {Imp(∃ n · Q ⊃ C)} = cong Imp 
+                                                     (cong₂ (∃_·_⊃_ n) 
+                                                            (QC-f.identity (pn.identity isid))
+                                                            (fmap-c-id (pn.identity isid)))
         where module pn = PlusN-f n
     fmap-c-id {f = f} isid {C₁ ∧′ C₂} = cong₂ _∧′_ (fmap-c-id isid) (fmap-c-id isid)
     fmap-c-id {f = f} isid {Ⅎ C    }  = cong Ⅎ_ (fmap-c-id (Ⓢ-f.identity isid))  
     fmap-c-comp : {s : Strata}{A B C : Set} {f : A → B} {g : B → C} {x : Constraint A s} 
-                → fmap-c (g ∘ f) x ≡ fmap-c g (fmap-c f x)
+                → fmap-c (g ∘ f) x ≡ fmap-c g (fmap-c f x)     
     fmap-c-comp {x = QC x} = cong QC QC-f.composite
     fmap-c-comp {x = C₁ ∧′ C₂} = cong₂ _∧′_ (fmap-c-comp {x = C₁}) (fmap-c-comp {x = C₂})
-    fmap-c-comp {x = Ⅎ C} = cong Ⅎ_ (trans (cong (λ t → fmap-c t C) (extensionality (λ x → Ⓢ-f.composite))) fmap-c-comp) 
-    fmap-c-comp {x = Imp (∃ n · Q ⊃ C) } = cong Imp 
-                                                (cong₂ (∃_·_⊃_ n) (trans (cong (λ t → QC-f.map t Q) 
-                                                                               (extensionality (λ x → pn.composite))) 
-                                                                         (QC-f.composite))
-                                                                  (trans (cong (λ t → fmap-c t C) 
-                                                                               (extensionality (λ x → pn.composite))) 
-                                                                         (fmap-c-comp)))
+    fmap-c-comp {x = Ⅎ C} = cong Ⅎ_ (combine-composite′ ⦃ Ⓢ-is-functor ⦄ fmap-c fmap-c-comp)
+    fmap-c-comp {x = Imp(∃ n · Q ⊃ C)} = cong Imp 
+                                              (cong₂ (∃_·_⊃_ n) 
+                                                     (combine-composite ⦃ qconstraint-is-functor ⦄
+                                                                        ⦃ pn-is-functor {n}⦄)
+                                                     (combine-composite′ ⦃ pn-is-functor {n}⦄ 
+                                                                         fmap-c fmap-c-comp))
       where module pn = PlusN-f n
-
+ 
   constraint-is-functor : ∀ {s : Strata} → Functor (λ n → Constraint n s)
   constraint-is-functor = record { map = fmap-c
                                  ; identity = fmap-c-id
                                  ; composite = fmap-c-comp
                                  }
-
-
 

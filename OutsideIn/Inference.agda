@@ -29,21 +29,21 @@ module OutsideIn.Inference(x : X) where
     module Type-m  = Monad(type-is-monad) 
     module Type-f  = Functor(type-is-functor)
 
-    generate : {ev : Set}{tv : Set}{r : Shape}(Γ : ∀ {x} → Name ev x → TypeSchema tv x)(e : Expression ev tv r)(τ : Type tv)  
-                 → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
+    generate : {ev : Set}{tv : Set}{r : Shape}
+               (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv)  
+             → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
     generate Γ e τ with prenex (genConstraint Γ e τ)
     ... | m , c = m , separate c
 
     generate′ : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Expression ev tv r)
-                 → ∃ (λ m → Type (tv ⨁ m) × ∃ (SeparatedConstraint (tv ⨁ m))) 
+              → ∃ (λ m → Type (tv ⨁ m) × ∃ (SeparatedConstraint (tv ⨁ m))) 
     generate′ Γ e with prenex (genConstraint (Γ ↑Γ) (Exp-f.map suc e) (Type-m.unit zero))
     ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
 
 
-    solve : ∀ {x : Set}(m : ℕ) → AxiomScheme →  QConstraint x → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
+    solve : ∀ {x : Set}(m : ℕ) → AxiomScheme →  QConstraint x 
+          → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
     solve {x} m axioms given (s , c) = solver m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
-
-
 
   open Type-m
   open import Data.Bool
@@ -55,8 +55,8 @@ module OutsideIn.Inference(x : X) where
   ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) prog
   ...     | _ =  false
   go Q Γ (bind₁ e , prog) with generate′ Γ e  
-  ... | fuv , τ , C with solve fuv Q tautologyConstraint C
-  ...     | suc (Solved θ) = go Q (⟨ ∀′ 0 · tautologyConstraint ⇒ (τ >>= θ) ⟩, Γ) prog
+  ... | fuv , τ , C with solve fuv Q ε C
+  ...     | suc (Solved θ) = go Q (⟨ ∀′ 0 · ε ⇒ (τ >>= θ) ⟩, Γ) prog
   ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) prog
   ...     | zero = false
 

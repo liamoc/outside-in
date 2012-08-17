@@ -16,8 +16,8 @@ module OutsideIn.Inference.Separator(x : X) where
 
   simpl : ∀ {n} → Constraint n Flat → QConstraint n
   simpl (QC c) = c
-  simpl (a ∧′ b) = conjConstraint (simpl a) (simpl b)
-  simpl (Imp _) = tautologyConstraint
+  simpl (a ∧′ b) = (simpl a) ∧ (simpl b)
+  simpl (Imp _) = ε
 
   separate : ∀ {n} → Constraint n Flat → ∃ (SeparatedConstraint n)
   implic : ∀ {n} → Constraint n Flat → ∃ (Implications n)
@@ -40,7 +40,8 @@ module OutsideIn.Inference.Separator(x : X) where
     where open Monad (type-is-monad)
           open Functor (type-is-functor)
   substituteImp f (imp-ε) = imp-ε
-  substituteImp {Unary s}{a}{b} f (imp (∃ n · Q ⊃ C)) = imp (∃ n · constraint-types (join ∘ map f′) Q ⊃ substituteSep f′ C) 
+  substituteImp {Unary s} f (imp (∃ n · Q ⊃ C)) = imp (∃ n · constraint-types (join ∘ map f′) Q
+                                                           ⊃ substituteSep f′ C) 
     where module PlusN-f = Functor (Monad.is-functor (PlusN-is-monad {n})) 
           open Monad (type-is-monad)
           open Functor (type-is-functor)

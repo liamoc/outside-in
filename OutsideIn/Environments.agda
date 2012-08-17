@@ -14,7 +14,8 @@ module OutsideIn.Environments(x : X) where
   Environment : Set → Set → Set
   Environment ev tv = ∀ {x} → Name ev x → TypeSchema tv x 
 
-  ⟨_⟩,_ :  ∀{ev}{tv} → TypeSchema tv Regular → (∀{x} → Name ev x → TypeSchema tv x) → ∀ {x} → Name (Ⓢ ev) x → TypeSchema tv x
+  ⟨_⟩,_ : ∀{ev}{tv} → TypeSchema tv Regular → (∀{x} → Name ev x → TypeSchema tv x) 
+        → ∀{x} → Name (Ⓢ ev) x → TypeSchema tv x
   (⟨ τ ⟩, Γ) (N zero) = τ
   (⟨ τ ⟩, Γ) (N (suc n)) = Γ (N n)
   (⟨ τ ⟩, Γ) (DC n) = Γ (DC n)

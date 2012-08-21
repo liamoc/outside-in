@@ -29,35 +29,35 @@ module OutsideIn.Inference(x : X) where
     module Type-m  = Monad(type-is-monad) 
     module Type-f  = Functor(type-is-functor)
 
-    generate : {ev : Set}{tv : Set}{r : Shape}
+  generate : {ev : Set}{tv : Set}{r : Shape}
                (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv)  
              → ∃ (λ m → ∃ (SeparatedConstraint (tv ⨁ m))) 
-    generate Γ e τ with prenex (genConstraint Γ e τ)
-    ... | m , c = m , separate c
+  generate Γ e τ with prenex (genConstraint Γ e τ)
+  ... | m , c = m , separate c
 
-    generate′ : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Expression ev tv r)
-              → ∃ (λ m → Type (tv ⨁ m) × ∃ (SeparatedConstraint (tv ⨁ m))) 
-    generate′ Γ e with prenex (genConstraint (Γ ↑Γ) (Exp-f.map suc e) (Type-m.unit zero))
-    ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
+  generate′ : {ev : Set}{tv : Set}{r : Shape}(Γ : Environment ev tv)(e : Expression ev tv r)
+            → ∃ (λ m → Type (tv ⨁ m) × ∃ (SeparatedConstraint (tv ⨁ m))) 
+  generate′ Γ e with prenex (genConstraint (Γ ↑Γ) (Exp-f.map suc e) (Type-m.unit zero))
+  ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
 
 
-    solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme →  QConstraint x 
-          → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
-    solve {x} m eq axioms given (s , c) = solver eq m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
+  solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme →  QConstraint x 
+        → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
+  solve {x} m eq axioms given (s , c) = solver eq m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
 
   open Type-m
   open import Data.Bool
 
-  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → Bool
-  go Q Γ eq end = true
+  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → Ⓢ (∃ (λ m → SimplifierResult tv m))
+  go Q Γ eq end = suc (zero , Solved {_}{_}{zero} unit)
   go Q Γ eq (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
   ... | fuv , C with solve fuv (PlusN-eq {n} eq) Q Qc C
   ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) eq prog
-  ...     | _ =  false
+  ...     | _ =  zero
   go Q Γ eq (bind₁ e , prog) with generate′ Γ e  
   ... | fuv , τ , C with solve fuv eq Q ε C
   ...     | suc (Solved {r} θ) = go Q (⟨ ∀′ r · ε ⇒ (τ >>= θ) ⟩, Γ) eq prog
   ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) eq prog
-  ...     | zero = false
+  ...     | zero = zero
 
  

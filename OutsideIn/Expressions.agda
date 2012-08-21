@@ -18,6 +18,8 @@ module OutsideIn.Expressions(x : X) where
       _→′_ : ∀ {n : ℕ}{r : Shape} → Pattern n → Expression (ev ⨁ n) tv r 
            → Alternative ev tv (Unary r)
 
+    infixr 5 _∣_ 
+
     data Alternatives (ev tv : Set) : Shape → Set where
       esac : Alternatives ev tv Nullary
       _∣_  : ∀ {r₁ r₂} → Alternative ev tv r₁ → Alternatives ev tv r₂ 

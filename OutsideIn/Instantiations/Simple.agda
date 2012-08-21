@@ -226,17 +226,40 @@ module OutsideIn.Instantiations.Simple where
   applySubst f (a ∧′ b) = applySubst f a ∧′ applySubst f b
   applySubst f (ε) = ε
 
-    
+
+
+
+  constraint-types : ∀{a b} → (Type a → Type b) → (SConstraint a → SConstraint b)  
+  constraint-types f ε = ε 
+  constraint-types f (a ∧′ b) = constraint-types f a ∧′ constraint-types f b
+  constraint-types f (a ∼ b) = f a ∼ f b 
+
+  applySubst′ : ∀ {a b} → (a → Type b) → SConstraint a  → SConstraint b 
+  applySubst′ f (a ∼ b) = (a >>= f) ∼ (b >>= f)
+    where open Monad (type-is-monad)
+  applySubst′ f (a ∧′ b) = applySubst′ f a ∧′ applySubst′ f b
+  applySubst′ f (ε) = ε
+  
+
+
   constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s 
-             → Ⓢ (∃ (λ n → tc ⨁ m → Type (tc ⨁ n)))
+             → SimplifierResult tc m
   constraint {Unary _} _ ()
-  constraint {Nullary}{tc}{m} eq ε = suc (m , Var)
-  constraint {Nullary}{tc}{m} eq (a ∼ b) = mgu′ {tc}{m} eq a b
+  constraint {Nullary}{tc}{m} eq ε = Solved {m = m} Var
+  constraint {Nullary}{tc}{m} eq (a ∼ b) with mgu′ {tc}{m} eq a b
+  ... | suc (n , θ) = Solved {m = n} θ
+  ... | zero = Unsolved {m = m} (a ∼ b) Var
   constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) with constraint {r₁}{tc}{m} eq a
-  ... | zero = zero
-  ... | suc (n , σ) with constraint {r₂}{tc}{n} eq (applySubst σ b)
-  ...               | zero = zero
-  ...               | suc (n′ , σ′) = suc (n′ ,  σ′ >=> σ )
+  ... | Unsolved {n} Qr θ with constraint {r₂}{tc}{n} eq (applySubst θ b)
+  ...                     | Solved {n′} θ′ = Unsolved {m = n′} (applySubst′ θ′ Qr) (θ′ >=> θ)
+    where open Monad (type-is-monad)
+  ...                     | Unsolved {n′} Qr′ θ′ = Unsolved {m = n′} (Qr′ ∧′ applySubst′ θ′ Qr) (θ′ >=> θ)
+    where open Monad (type-is-monad)
+  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) | Solved {n} θ 
+                with constraint {r₂}{tc}{n} eq (applySubst θ b) 
+  ...           | Unsolved {n′} Qr′ θ′  = Unsolved {m = n′} Qr′ (θ′ >=> θ)  
+    where open Monad (type-is-monad)
+  ...           | Solved {n′} θ′ = Solved {m = n′} (θ′ >=> θ)
     where open Monad (type-is-monad)
 
   shapify : ∀ {a} → SConstraint a → ∃ (SConstraintShape a)
@@ -249,9 +272,7 @@ module OutsideIn.Instantiations.Simple where
   simplifier : {x : Set} → Eq x → (n : ℕ) → Ax → SConstraint (x ⨁ n) 
                          → SConstraint (x ⨁ n) → SimplifierResult x n
   simplifier {x} eq n _ con₁ con₂ with shapify (con₁ ∧′ con₂) 
-  ... | r , v with constraint {r}{x}{n} eq v
-  ...         | zero = Unsolved {m = n} (con₁ ∧′ con₂) Var 
-  ...         | suc (n′ , θ) = Solved {m = n′} θ
+  ... | r , v = constraint {r}{x}{n} eq v
      
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
@@ -265,9 +286,5 @@ module OutsideIn.Instantiations.Simple where
                      ; simplifier = simplifier
                      ; constraint-types = constraint-types
                      }
-     where constraint-types : ∀{a b} → (Type a → Type b) → (SConstraint a → SConstraint b)  
-           constraint-types f ε = ε 
-           constraint-types f (a ∧′ b) = constraint-types f a ∧′ constraint-types f b
-           constraint-types f (a ∼ b) = f a ∼ f b 
 
 

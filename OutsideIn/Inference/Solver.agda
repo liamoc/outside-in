@@ -15,26 +15,32 @@ module OutsideIn.Inference.Solver(x : X) where
           module Type-f = Functor (type-is-functor)
           module Type-m = Monad (type-is-monad)
 
-  solver : {x : Set}{s : Shape} 
+  solver : {x : Set}{s : Shape} → Eq x 
          → (n : ℕ) → AxiomScheme →  QConstraint (x ⨁ n) →  SeparatedConstraint (x ⨁ n) s
          → Ⓢ (SimplifierResult x n)
-  solveImps : {x : Set}{s : Shape} → AxiomScheme →  QConstraint x → Implications x s
+  solveImps : {x : Set}{s : Shape} → Eq x → AxiomScheme →  QConstraint x → Implications x s
             → Bool
-  solver {x} n axioms given (SC simpl imps) with simplifier n axioms given simpl
-  ... | Solved θ = if solveImps axioms (qc-substitute θ given) (substituteImp θ imps) 
-                    then suc (Solved θ) 
+  solver {x} eq n axioms given (SC simpl imps) with simplifier eq n axioms given simpl
+  ... | Solved {m = m} θ = if solveImps (PlusN-eq {m} eq) 
+                                        axioms 
+                                        (qc-substitute θ given) 
+                                        (substituteImp θ imps) 
+                    then suc (Solved {m = m} θ) 
                     else zero
-  ... | Unsolved {m = m} Qr θ = if solveImps axioms (Qr ∧ qc-substitute θ given) 
-                                                    (substituteImp θ imps) 
+  ... | Unsolved {m = m} Qr θ = if solveImps (PlusN-eq {m} eq) 
+                                             axioms 
+                                             (Qr ∧ qc-substitute θ given) 
+                                             (substituteImp θ imps) 
                                  then suc (Unsolved {m = m} Qr θ) 
                                  else zero
-  solveImps axioms given (imp-ε) = true
-  solveImps axioms given (imp (∃ n · Q ⊃ C)) with solver n 
-                                                         axioms 
-                                                         (QC-f.map (PlusN-m.unit {n}) given ∧ Q) 
-                                                         C
+  solveImps eq axioms given (imp-ε) = true
+  solveImps eq axioms given (imp (∃ n · Q ⊃ C)) with solver eq n axioms 
+                                                            (QC-f.map (PlusN-m.unit {n}) 
+                                                                      given 
+                                                            ∧ Q) 
+                                                            C
   ... | suc (Solved θ) = true
   ... | suc (Unsolved Qr θ) = false
   ... | zero = false
-  solveImps axioms given (a imp-∧ b) = solveImps axioms given a 
-                                   and solveImps axioms given b 
+  solveImps eq axioms given (a imp-∧ b) = solveImps eq axioms given a 
+                                      and solveImps eq axioms given b 

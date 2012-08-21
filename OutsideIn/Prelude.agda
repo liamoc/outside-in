@@ -101,6 +101,17 @@ module OutsideIn.Prelude where
                       ; identity = F.identity ⦃ F1 ⦄ ∘ F.identity ⦃ F2 ⦄
                       }
 
+  module StupidEquality where
+    open import Data.Bool public using (Bool; true; false) 
+    -- This equality doesn't place any proof demands
+    -- because we don't actually care what equality is used.
+    -- This is just for the initial base of type variables, where the user provides
+    -- their own type equality relation. We don't care if it says Int ∼ Bool - this just
+    -- provides a way for users to get some equality information threaded through the 
+    -- simplifier
+    Eq : Set → Set
+    Eq X = ∀ (a b : X) → Bool
+
   module Monads where
     open Functors
    
@@ -185,6 +196,7 @@ module OutsideIn.Prelude where
   module Ⓢ-Type where
     open Functors
     open Monads
+    open StupidEquality
  
     data Ⓢ (τ : Set) : Set where
       suc : τ → Ⓢ τ
@@ -221,6 +233,13 @@ module OutsideIn.Prelude where
                            ; identity = fmap-Ⓢ-id
                            ; composite = fmap-Ⓢ-comp
                            }
+
+
+    Ⓢ-eq : ∀ {x} → Eq x → Eq (Ⓢ x)
+    Ⓢ-eq x zero zero = true
+    Ⓢ-eq x (suc n) zero = false
+    Ⓢ-eq x zero (suc m) = false
+    Ⓢ-eq x (suc n) (suc m) = x n m
 
     private
       join-Ⓢ : ∀ {x} → Ⓢ (Ⓢ x) → Ⓢ x
@@ -404,10 +423,16 @@ module OutsideIn.Prelude where
     open Ⓢ-Type
     open Monads
     open Functors
+    open StupidEquality
 
     PlusN : (n : ℕ) → Set → Set
     PlusN zero = id
     PlusN (suc n) = Ⓢ-Trans (PlusN n)
+
+    
+    PlusN-eq : ∀ {n}{x} → Eq x → Eq (PlusN n x)
+    PlusN-eq {zero} eq = eq
+    PlusN-eq {suc n} eq = PlusN-eq {n} (Ⓢ-eq eq)
 
     PlusN-is-monad : ∀ {n} → Monad (PlusN n)
     PlusN-is-monad {zero} = id-is-monad
@@ -430,3 +455,4 @@ module OutsideIn.Prelude where
   open Functors public
   open Monads public
   open Shapes public
+  open StupidEquality public

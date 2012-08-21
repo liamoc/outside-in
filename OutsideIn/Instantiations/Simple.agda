@@ -1,6 +1,7 @@
 open import OutsideIn.Prelude 
 open import OutsideIn.X
 module OutsideIn.Instantiations.Simple where
+  open import Data.Fin hiding (_+_)
 
   data Type ( n :  Set) : Set where
     funTy : Type n
@@ -81,9 +82,177 @@ module OutsideIn.Instantiations.Simple where
 
   open SimpRes(SConstraint)(Type)
 
-  postulate simplifier : {x : Set} (n : ℕ) → Ax → SConstraint (x ⨁ n) → SConstraint (x ⨁ n) 
-                       → SimplifierResult x n
+  data SVar (tc : Set)(n : ℕ) : Set where
+    base : tc → SVar tc n
+    unification : Fin n → SVar tc n
 
+  thin : {n : ℕ} → Fin (suc n) → Fin n → Fin (suc n)
+  thin zero y          = suc y
+  thin (suc x) zero    = zero
+  thin (suc x) (suc y) = suc (thin x y)
+ 
+ 
+  thick : ∀ {n} → (x y : Fin (suc n)) → Ⓢ (Fin n) 
+  thick zero zero = zero
+  thick zero (suc y) = suc y
+  thick {zero } (suc ()) _ 
+  thick {suc _} (suc x)  zero = zero
+  thick {suc _} (suc x) (suc y) with thick x y
+  ... | zero = zero
+  ... | suc n = suc (suc n)
+
+  check : ∀ {tc}{n} → Fin (suc n) → Type (SVar tc (suc n)) → Ⓢ (Type (SVar tc n))
+  check x (funTy) = suc funTy
+  check x (Var (base v)) = suc (Var (base v))
+  check x (Var (unification n)) = map (Var ∘ unification) (thick x n) 
+   where open Functor (Monad.is-functor Ⓢ-is-monad)
+  check x (a · b) = check x a >>= λ a′ →
+                     check x b >>= λ b′ → 
+                      unit (a′ · b′)
+   where open Monad (Ⓢ-is-monad)
+
+
+  data AList (tc : Set) : ℕ → ℕ → Set where
+    anil : ∀ {n} → AList tc n n
+    _asnoc_/_ : ∀ {m n} → AList tc m n → Type (SVar tc m) → Fin (suc m) → AList tc (suc m) n
+
+
+  _∃asnoc_/_ : ∀ {tc}{m} (a : ∃ (AList tc m)) (t' : Type (SVar tc m)) (x : Fin (suc m)) 
+             →  ∃ (AList tc (suc m))
+  (n , σ) ∃asnoc t' / x = n , σ asnoc t' / x
+
+  _for_ : ∀{tc}{n} → (Type (SVar tc n)) → Fin (suc n)
+        → SVar tc (suc n) → Type (SVar tc n)
+  (t′ for x) (base y) = Var (base y)
+  (t′ for x) (unification y) with thick x y
+  ... | suc y′ = Var (unification y′)
+  ... | zero   = t′ 
+
+  sub : ∀ {m n}{tc} → AList tc m n → SVar tc m → Type (SVar tc n)  
+  sub anil = Var
+  sub (σ asnoc t / x) = sub σ >=> (t for x)
+    where open Monad (type-is-monad)
+
+  flexFlex : ∀ {tc}{m} (x y : Fin m) → ∃ (AList tc m)    
+  flexFlex {_}{suc m} x y with thick x y
+  ...              | suc y′ = m , anil asnoc Var (unification y′) / x
+  ...              | zero   = suc m , anil
+  flexFlex {_}{zero} () _
+
+  flexRigid : ∀ {tc}{m} (x : Fin m) (t : Type (SVar tc m)) -> Ⓢ (∃(AList tc m))
+  flexRigid {_}{suc m} x t with check x t
+  ...                      | suc t′ = suc (m , anil asnoc t′ / x)
+  ...                      | zero   = zero
+  flexRigid {_}{zero} () _
+
+  amgu : ∀{tc}{m} → (Eq tc) → (s t : Type (SVar tc m)) → ∃ (AList tc m) → Ⓢ (∃ (AList tc m))
+  amgu eq (funTy) (funTy) acc = suc acc 
+  amgu eq (Var (base a)) (Var (base b)) acc with eq a b
+  ... | true = suc acc 
+  ... | false = zero 
+  amgu eq (Var (base a)) (funTy) acc = zero 
+  amgu eq (funTy) (Var (base b)) acc = zero 
+  amgu eq (funTy) (a · b) acc = zero
+  amgu eq (Var (base _)) (a · b) acc = zero
+  amgu eq (a · b) (funTy) acc = zero
+  amgu eq (a · b) (Var (base _)) acc = zero
+  amgu eq (a · b) (a′ · b′) acc = amgu eq a a′ acc >>= amgu eq b b′ 
+     where open Monad (Ⓢ-is-monad)
+  amgu eq (Var (unification x)) (Var (unification y)) (m , anil) = suc (flexFlex x y)
+  amgu eq (Var (unification x)) t (m , anil) = flexRigid x t 
+  amgu eq t (Var (unification x)) (m , anil) = flexRigid x t 
+  amgu eq s t (n , σ asnoc r / z) = Ⓢ-f.map (λ σ → σ ∃asnoc r / z) (amgu eq (s >>= (r for z)) 
+                                                                             (t >>= (r for z)) 
+                                                                             (n , σ)) 
+    where module Ⓢ-f = Functor (Monad.is-functor Ⓢ-is-monad)
+          open Monad (type-is-monad)
+
+
+  mgu : ∀{tc}{m}(eq : Eq tc)(s t : Type (SVar tc m)) → Ⓢ (∃ (AList tc m))
+  mgu {m = m} eq s t = amgu eq s t (m , anil)
+
+
+  prf : ∀ {m n} → m + suc n ≡ suc m + n
+  prf {zero} = refl
+  prf {suc n} = cong suc (prf {n})
+  prf₂ : ∀ {m} →  m + zero ≡ m
+  prf₂ {zero} = refl
+  prf₂ {suc n} = cong suc prf₂
+
+  svar-iso₁′ : ∀{m n}{tc} → SVar tc n ⨁ m → SVar tc (m + n) 
+  svar-iso₁′ {zero} x = x
+  svar-iso₁′ {suc m}{n}{tc} v = subst (SVar tc) (prf {m}{n}) (svar-iso₁′ {m}{suc n} (pm-f.map ind v)) 
+   where module pm-f = Functor (Monad.is-functor (PlusN-is-monad {m}))
+         ind : ∀{tc}{m} → Ⓢ (SVar tc m) → SVar tc (suc m)
+         ind zero = unification zero
+         ind (suc n) with n
+         ... | base v = base v
+         ... | unification x = unification (suc x)
+
+
+  svar-iso₂′ : ∀{m}{tc} → Fin m → tc ⨁ m 
+  svar-iso₂′ {zero} () 
+  svar-iso₂′ {suc n} zero = pn-m.unit zero 
+   where module pn-m = Monad (PlusN-is-monad {n})
+  svar-iso₂′ {suc n} (suc v) = pm-f.map suc (svar-iso₂′ {n} v)
+   where module pm-f = Functor (Monad.is-functor (PlusN-is-monad {n}))
+
+  svar-iso₁ : ∀{m}{tc} → tc ⨁ m → SVar tc m
+  svar-iso₁ {m}{tc} v = subst (SVar tc) prf₂ (svar-iso₁′ {m}{zero}{tc} (pm-f.map base v))
+   where module pm-f = Functor (Monad.is-functor (PlusN-is-monad {m}))
+
+  svar-iso₂ : ∀{m}{tc} → SVar tc m → tc ⨁ m 
+  svar-iso₂ {m}{tc} (base v) = pm-m.unit v
+   where module pm-m = Monad (PlusN-is-monad {m})
+  svar-iso₂ {m}{tc} (unification v) = svar-iso₂′ v
+  
+  open Functor (Monad.is-functor type-is-monad) using () renaming (map to τ-map)
+
+  mgu′ : ∀{tc}{m}(eq : Eq tc)(s t : Type (tc ⨁ m)) → Ⓢ (∃ (λ n → tc ⨁ m → Type (tc ⨁ n)))
+  mgu′ {tc}{m} eq s t with mgu {tc}{m} eq (τ-map svar-iso₁ s) (τ-map svar-iso₁ t)
+  ... | zero = zero
+  ... | suc (n , al) = suc (n , τ-map svar-iso₂ ∘ sub al ∘ svar-iso₁)
+
+
+  data SConstraintShape (x : Set) : Shape → Set where
+     _∼_ : Type x → Type x → SConstraintShape x Nullary
+     ε : SConstraintShape x Nullary
+     _∧′_ : ∀ {a b} → SConstraintShape x a → SConstraintShape x b → SConstraintShape x (Binary a b)
+ 
+
+  applySubst : ∀ {a b}{s} → (a → Type b) → SConstraintShape a s → SConstraintShape b s
+  applySubst f (a ∼ b) = (a >>= f) ∼ (b >>= f)
+    where open Monad (type-is-monad)
+  applySubst f (a ∧′ b) = applySubst f a ∧′ applySubst f b
+  applySubst f (ε) = ε
+
+    
+  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s 
+             → Ⓢ (∃ (λ n → tc ⨁ m → Type (tc ⨁ n)))
+  constraint {Unary _} _ ()
+  constraint {Nullary}{tc}{m} eq ε = suc (m , Var)
+  constraint {Nullary}{tc}{m} eq (a ∼ b) = mgu′ {tc}{m} eq a b
+  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) with constraint {r₁}{tc}{m} eq a
+  ... | zero = zero
+  ... | suc (n , σ) with constraint {r₂}{tc}{n} eq (applySubst σ b)
+  ...               | zero = zero
+  ...               | suc (n′ , σ′) = suc (n′ ,  σ′ >=> σ )
+    where open Monad (type-is-monad)
+
+  shapify : ∀ {a} → SConstraint a → ∃ (SConstraintShape a)
+  shapify (a ∼ b) = Nullary , a ∼ b
+  shapify (a ∧′ b) with shapify a | shapify b
+  ... | r₁ , a′ | r₂ , b′ = Binary r₁ r₂ , a′ ∧′ b′
+  shapify (ε) = Nullary , ε
+  
+
+  simplifier : {x : Set} → Eq x → (n : ℕ) → Ax → SConstraint (x ⨁ n) 
+                         → SConstraint (x ⨁ n) → SimplifierResult x n
+  simplifier {x} eq n _ con₁ con₂ with shapify (con₁ ∧′ con₂) 
+  ... | r , v with constraint {r}{x}{n} eq v
+  ...         | zero = Unsolved {m = n} (con₁ ∧′ con₂) Var 
+  ...         | suc (n′ , θ) = Solved {m = n′} θ
+     
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
                      ; Type = Type
@@ -94,10 +263,11 @@ module OutsideIn.Instantiations.Simple where
                      ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε 
                      ; AxiomScheme = Ax
                      ; simplifier = simplifier
-                     ; constraint-types = constraint-types 
+                     ; constraint-types = constraint-types
                      }
      where constraint-types : ∀{a b} → (Type a → Type b) → (SConstraint a → SConstraint b)  
            constraint-types f ε = ε 
            constraint-types f (a ∧′ b) = constraint-types f a ∧′ constraint-types f b
            constraint-types f (a ∼ b) = f a ∼ f b 
+
 

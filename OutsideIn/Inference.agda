@@ -41,23 +41,23 @@ module OutsideIn.Inference(x : X) where
     ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
 
 
-    solve : ∀ {x : Set}(m : ℕ) → AxiomScheme →  QConstraint x 
+    solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme →  QConstraint x 
           → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
-    solve {x} m axioms given (s , c) = solver m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
+    solve {x} m eq axioms given (s , c) = solver eq m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
 
   open Type-m
   open import Data.Bool
 
-  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Program ev tv → Bool
-  go Q Γ end = true
-  go Q Γ (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
-  ... | fuv , C with solve fuv Q Qc C
-  ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) prog
+  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → Bool
+  go Q Γ eq end = true
+  go Q Γ eq (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
+  ... | fuv , C with solve fuv (PlusN-eq {n} eq) Q Qc C
+  ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) eq prog
   ...     | _ =  false
-  go Q Γ (bind₁ e , prog) with generate′ Γ e  
-  ... | fuv , τ , C with solve fuv Q ε C
-  ...     | suc (Solved θ) = go Q (⟨ ∀′ 0 · ε ⇒ (τ >>= θ) ⟩, Γ) prog
-  ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) prog
+  go Q Γ eq (bind₁ e , prog) with generate′ Γ e  
+  ... | fuv , τ , C with solve fuv eq Q ε C
+  ...     | suc (Solved {r} θ) = go Q (⟨ ∀′ r · ε ⇒ (τ >>= θ) ⟩, Γ) eq prog
+  ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) eq prog
   ...     | zero = false
 
  

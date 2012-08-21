@@ -6,7 +6,7 @@ module OutsideIn.X where
    
    module SimpRes(QConstraint : Set → Set)(Type : Set → Set) where
      data SimplifierResult (x : Set)( n : ℕ ) : Set where
-       Solved : (x ⨁ n → Type x) → SimplifierResult x n
+       Solved : ∀ {m} → (x ⨁ n → Type (x ⨁ m)) → SimplifierResult x n
        Unsolved : ∀ {m} → QConstraint (x ⨁ m) → (x ⨁ n → Type (x ⨁ m))  
                 → SimplifierResult x n
 
@@ -31,8 +31,8 @@ module OutsideIn.X where
 
       open SimpRes(QConstraint)(Type) 
 
-      field simplifier : ∀ {x : Set} → (n : ℕ) → AxiomScheme →  QConstraint (x ⨁ n) 
-                       →  QConstraint (x ⨁ n) → SimplifierResult x n
+      field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme 
+                       → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → SimplifierResult x n
       open SimpRes(QConstraint)(Type) public
 
       type-is-functor = Monad.is-functor type-is-monad

@@ -3,12 +3,12 @@ module OutsideIn.X where
    open import Data.Product public hiding (map) 
 
 
-   private
-     module SimpRes(QConstraint : Set → Set)(Type : Set → Set) where
-       data SimplifierResult (x : Set)( n : ℕ ) : Set where
-         Solved : (x ⨁ n → Type x) → SimplifierResult x n
-         Unsolved : ∀ {m} → QConstraint (x ⨁ m) → (x ⨁ n → Type (x ⨁ m))  
-                  → SimplifierResult x n
+   
+   module SimpRes(QConstraint : Set → Set)(Type : Set → Set) where
+     data SimplifierResult (x : Set)( n : ℕ ) : Set where
+       Solved : (x ⨁ n → Type x) → SimplifierResult x n
+       Unsolved : ∀ {m} → QConstraint (x ⨁ m) → (x ⨁ n → Type (x ⨁ m))  
+                → SimplifierResult x n
 
    record X : Set₁ where
       field dc : ℕ → Set

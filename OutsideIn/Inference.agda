@@ -46,18 +46,18 @@ module OutsideIn.Inference(x : X) where
   solve {x} m eq axioms given (s , c) = solver eq m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
 
   open Type-m
-  open import Data.Bool
+  open import Data.Empty
 
-  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → Ⓢ (∃ (λ m → SimplifierResult tv m))
-  go Q Γ eq end = suc (zero , Solved {_}{_}{zero} unit)
+  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → (∃ (λ m → Environment m tv))
+  go Q Γ eq end = (_ , Γ)
   go Q Γ eq (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
   ... | fuv , C with solve fuv (PlusN-eq {n} eq) Q Qc C
   ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) eq prog
-  ...     | _ =  zero
+  ...     | _ =  _ , Γ
   go Q Γ eq (bind₁ e , prog) with generate′ Γ e  
   ... | fuv , τ , C with solve fuv eq Q ε C
   ...     | suc (Solved {r} θ) = go Q (⟨ ∀′ r · ε ⇒ (τ >>= θ) ⟩, Γ) eq prog
   ...     | suc (Unsolved {r} Qr θ) = go Q (⟨ ∀′ r · Qr ⇒ (τ >>= θ)⟩, Γ) eq prog
-  ...     | zero = zero
+  ...     | zero = _ , Γ
 
  

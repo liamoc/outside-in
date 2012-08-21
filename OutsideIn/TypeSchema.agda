@@ -4,14 +4,19 @@ module OutsideIn.TypeSchema(x : X) where
   open X(x)
   open import Data.Vec hiding (_>>=_)
 
+  data DataconType : Set where
+    ADT : DataconType
+    GADT : DataconType
+
   data NameType : Set where
     Regular : NameType
-    Datacon : ℕ → NameType
+    Datacon : ℕ → DataconType → NameType
 
   data TypeSchema ( n : Set) : NameType → Set where
     ∀′_·_⇒_ : (v : ℕ) → QConstraint (n ⨁ v) → Type (n ⨁ v) → TypeSchema n Regular
     DC∀′_,_·_⇒_⟶_ : (a b : ℕ){l : ℕ} → QConstraint ((n ⨁ a) ⨁ b) 
-                   → Vec (Type ((n ⨁ a) ⨁ b)) l → n → TypeSchema n (Datacon l)
+                   → Vec (Type ((n ⨁ a) ⨁ b)) l → n → TypeSchema n (Datacon l GADT)
+    DC∀_·_⟶_ : (a : ℕ){l : ℕ} → Vec (Type (n ⨁ a)) l → n → TypeSchema n (Datacon l ADT)
 
   private
     module PlusN-f n = Functor (Monad.is-functor (PlusN-is-monad {n}))
@@ -29,6 +34,8 @@ module OutsideIn.TypeSchema(x : X) where
                                                           ⟶ f K
         where module pa = PlusN-f a
               module pb = PlusN-f b
+    fmap-schema f (DC∀ a · τs ⟶ K) = DC∀ a · map (Type-f.map (pa.map f)) τs ⟶ f K
+        where module pa = PlusN-f a
 
 
     fmap-schema-id : {A : Set}{x : NameType} {f : A → A} 
@@ -43,6 +50,11 @@ module OutsideIn.TypeSchema(x : X) where
               isid
         where module pa = PlusN-f a
               module pb = PlusN-f b
+    fmap-schema-id isid {DC∀ a · τs ⟶ K} 
+      = cong₂ (DC∀_·_⟶_ a) 
+              (Vec-f.identity (Type-f.identity (pa.identity isid))) 
+              isid
+        where module pa = PlusN-f a
 
 
     fmap-schema-comp :  {A B C : Set}{s : NameType} {f : A → B} {g : B → C} {x : TypeSchema A s}
@@ -60,6 +72,12 @@ module OutsideIn.TypeSchema(x : X) where
               module pb = PlusN-f b
               paf = Monad.is-functor (PlusN-is-monad {a})
               pbf = Monad.is-functor (PlusN-is-monad {b})
+    fmap-schema-comp {x = DC∀ a · τs ⟶ K} 
+      = cong₂ (DC∀_·_⟶_ a) 
+              (Functor.composite (vec-is-functor ∘f type-is-functor ∘f paf))
+              refl
+        where module pa = PlusN-f a
+              paf = Monad.is-functor (PlusN-is-monad {a})
 
   type-schema-is-functor : ∀{s} → Functor (λ x → TypeSchema x s)
   type-schema-is-functor = record { map       = fmap-schema

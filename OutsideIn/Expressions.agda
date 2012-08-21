@@ -8,14 +8,12 @@ module OutsideIn.Expressions(x : X) where
   {- SYNTAX -}
   data Name (n : Set) : NameType → Set where
     N : n → Name n Regular
-    DC : ∀ {x} → dc x → Name n (Datacon x)
-
-  data Pattern : ℕ → Set where
-    Con : ∀ {d} → dc d → Pattern d
+    GDC : ∀ {x} → dc x → Name n (Datacon x GADT)
+    DC : ∀ {x} → dc x → Name n (Datacon x ADT)
 
   mutual 
     data Alternative (ev tv : Set) : Shape → Set where
-      _→′_ : ∀ {n : ℕ}{r : Shape} → Pattern n → Expression (ev ⨁ n) tv r 
+      _→′_ : ∀ {n : ℕ}{r : Shape}{dt : DataconType} → Name ev (Datacon n dt) → Expression (ev ⨁ n) tv r 
            → Alternative ev tv (Unary r)
 
     infixr 5 _∣_ 
@@ -52,8 +50,11 @@ module OutsideIn.Expressions(x : X) where
     fmap-alt₁ : ∀ {a b tv}{r} → (a → b) → Alternative a tv r → Alternative b tv r
     fmap-exp₁ : ∀ {a b tv}{r} → (a → b) → Expression a tv r → Expression b tv r
     map-fmap-alt₁ : ∀ {a b tv}{r} → (a → b) → Alternatives a tv r → Alternatives b tv r
-    fmap-alt₁ f (_→′_ {n} p expr) = p →′ fmap-exp₁ (pn.map f) expr
+    fmap-alt₁ f (_→′_ {n} (GDC c) expr) = GDC c →′ fmap-exp₁ (pn.map f) expr
        where module pn = PlusN-f n
+    fmap-alt₁ f (_→′_ {n} (DC c) expr) = DC c →′ fmap-exp₁ (pn.map f) expr
+       where module pn = PlusN-f n
+    fmap-exp₁ f (Var (GDC c)) = Var (GDC c)
     fmap-exp₁ f (Var (DC c)) = Var (DC c)
     fmap-exp₁ f (Var (N x)) = Var (N (f x))
     fmap-exp₁ f (λ′ x) = λ′ (fmap-exp₁ (Ⓢ-f.map f) x) 
@@ -91,13 +92,16 @@ module OutsideIn.Expressions(x : X) where
                      → isIdentity f → isIdentity (map-fmap-alt₁  {a}{a}{tv}{r} f)
     fmap-exp-id₁ : ∀{A tv : Set}{r : Shape} {f : A → A} → isIdentity f 
                  → isIdentity (fmap-exp₁ {A}{A}{tv}{r} f)   
-    fmap-alt-id₁ {A}{f} f-is-id {_→′_ {n} p x} = cong (_→′_ p) (fmap-exp-id₁ (pn.identity f-is-id))
+    fmap-alt-id₁ {A}{f} f-is-id {_→′_ {n} (GDC p) x} = cong (_→′_ (GDC p)) (fmap-exp-id₁ (pn.identity f-is-id))
+      where module pn = PlusN-f n       
+    fmap-alt-id₁ {A}{f} f-is-id {_→′_ {n} (DC p) x} = cong (_→′_ (DC p)) (fmap-exp-id₁ (pn.identity f-is-id))
       where module pn = PlusN-f n       
     map-fmap-alt-id₁ {r = Unary _} f-is-id {}
     map-fmap-alt-id₁ {r = Nullary} f-is-id {esac} = refl 
     map-fmap-alt-id₁ {r = Binary r₁ r₂} f-is-id {x ∣ xs} = cong₂ _∣_ (fmap-alt-id₁ f-is-id) 
                                                                      (map-fmap-alt-id₁ f-is-id)
     fmap-exp-id₁ {r = Nullary} f-is-id {Var (DC x)} = refl
+    fmap-exp-id₁ {r = Nullary} f-is-id {Var (GDC x)} = refl
     fmap-exp-id₁ {r = Nullary} f-is-id {Var (N x)} = cong Var (cong N f-is-id)
     fmap-exp-id₁ {r = Unary r′} f-is-id {λ′ x} = cong λ′_ (fmap-exp-id₁ (Ⓢ-f.identity f-is-id))
     fmap-exp-id₁ {r = Binary r₁ r₂} f-is-id {x · y} = cong₂ _·_ (fmap-exp-id₁ f-is-id) 
@@ -154,17 +158,24 @@ module OutsideIn.Expressions(x : X) where
                        → map-fmap-alt₁ (g ∘ f) l ≡ map-fmap-alt₁ g (map-fmap-alt₁ f l)
     fmap-alt-comp₁ {Nullary}   {x = ()} 
     fmap-alt-comp₁ {Binary _ _}{x = ()} 
-    fmap-alt-comp₁ {Unary r}{f = f}{g}{x = _→′_ {n} p expr} 
-      = cong (_→′_ p) 
+    fmap-alt-comp₁ {Unary r}{f = f}{g}{x = _→′_ {n} (GDC p) expr} 
+      = cong (_→′_ (GDC p)) 
+             (combine-composite′ ⦃ Monad.is-functor (PlusN-is-monad {n}) ⦄ {expr} 
+                                 fmap-exp₁ 
+                                 (fmap-exp-comp₁ {f = pn.map f}{g = pn.map g}{expr}))
+      where module pn = PlusN-f n
+    fmap-alt-comp₁ {Unary r}{f = f}{g}{x = _→′_ {n} (DC p) expr} 
+      = cong (_→′_ (DC p)) 
              (combine-composite′ ⦃ Monad.is-functor (PlusN-is-monad {n}) ⦄ {expr} 
                                  fmap-exp₁ 
                                  (fmap-exp-comp₁ {f = pn.map f}{g = pn.map g}{expr}))
       where module pn = PlusN-f n
     map-fmap-alt-comp₁ {l = esac} = refl
-    map-fmap-alt-comp₁ {l = x ∣ xs} = cong₂ _∣_ fmap-alt-comp₁ map-fmap-alt-comp₁
+    map-fmap-alt-comp₁ {Binary a b}{A}{B}{C}{tv}{l = x ∣ xs} = cong₂ _∣_ (fmap-alt-comp₁ {x = x}) (map-fmap-alt-comp₁)
 
     fmap-exp-comp₁ {x = Var (N x)} = cong Var (cong N (refl))
     fmap-exp-comp₁ {x = Var (DC x)} = refl
+    fmap-exp-comp₁ {x = Var (GDC x)} = refl
     fmap-exp-comp₁ {f = f}{g}{x = λ′ x } 
       = cong λ′_ (combine-composite′ ⦃ Monad.is-functor (Ⓢ-is-monad) ⦄ {x}
                                      fmap-exp₁
@@ -230,7 +241,7 @@ module OutsideIn.Expressions(x : X) where
   alternative-is-functor₁ : ∀{tv}{r} → Functor (λ x → Alternative x tv r)
   alternative-is-functor₁ = record { map = fmap-alt₁
                                    ; identity = fmap-alt-id₁
-                                   ; composite = fmap-alt-comp₁ 
+                                   ; composite = λ { {x = x} → fmap-alt-comp₁ {x = x} } 
                                    }
   alternative-is-functor₂ : ∀{ev}{r} → Functor (λ x → Alternative ev x r)
   alternative-is-functor₂ = record { map = fmap-alt₂

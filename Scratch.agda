@@ -19,8 +19,8 @@ module Scratch where
 
   e : Expression ⊥ TCs _
   e = λ′ case Var (N zero) of 
-                ( Con True  →′ Var (DC False)
-                ∣ Con False →′ Var (DC True )
+                ( DC True  →′ Var (DC False)
+                ∣ DC False →′ Var (DC True )
                 ∣ esac
                 )
   p : Program ⊥ TCs
@@ -29,9 +29,11 @@ module Scratch where
 
   
   Γ : Environment ⊥ TCs
-  Γ (DC True) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
-  Γ (DC False) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
+  Γ (DC True) = DC∀ 0 · [] ⟶ BoolT 
+  Γ (DC False) = DC∀ 0 · [] ⟶ BoolT 
+  Γ (GDC True) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
+  Γ (GDC False) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
   Γ (N ()) 
 
   test = go ax Γ (λ a b → true) p 
-  test′ = generate′ Γ e -- (Var (BoolT) ⟶ Var (BoolT))
+  test′ = generate Γ e (Var (BoolT) ⟶ Var (BoolT))

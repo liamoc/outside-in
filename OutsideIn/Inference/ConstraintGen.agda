@@ -54,23 +54,42 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
     applyAll zero x = x
     applyAll (suc n) x = applyAll n ((x ↑t) ·· (TVar zero))
 
+    funType : ∀{tv}{n} → Vec (Type tv) n → Type tv → Type tv
+    funType [] t = t
+    funType (x ∷ xs) t = x ⟶ (funType xs t) 
+
   genConstraint : {ev : Set}{tv : Set}{r : Shape}
                   (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv) 
                 → Constraint tv Extended
   genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape}
                              (Γ : Environment ev tv)(e : Alternative ev tv r)(α β : Type tv) 
                            → Constraint tv Extended
-  genConstraintAlternative {ev}{tv} Γ (Con K →′ e) α β with Γ (DC K)
-  ... | DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (Γ′ τs↑ Γ↑) e↑ δ
+  genConstraintAlternative {ev}{tv} Γ (v →′ e) α β with Γ v
+  ... | DC∀ a · τs ⟶ T =  Ⅎ′ a · let C  = genConstraint (Γ′ (Vec-f.map (_↑t) τs) Γ↑) ((Exp-f₂.map (pa.unit) e) ↑e) δ
+                                  in (Ⅎ  ((δ ∼′ ((Type-f.map (pa.unit) β) ↑t)) ∧′ C)) ∧′ (applyAll a (TVar T)) ∼′ (Type-f.map (pa.unit) α) 
+    where module pa = PlusN-m a
+          tv′ = Ⓢ (tv ⨁ a)
+          Γ↑ : ∀ {x} → Name ev x → TypeSchema tv′ x
+          Γ↑ = (TypeSchema-f.map (pa.unit) ∘ Γ) ↑Γ
+          δ : Type tv′
+          δ = TVar (zero)
+          Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
+          Γ′ [] Γ = Γ 
+          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
+  ... |  DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (Γ′ (Vec-f.map (_↑t) τs) Γ↑) e↑ δ
                                                   in (Imp (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼′ β↑))) ∧′ 
                                                      Tγ ∼′ α↑ 
     where module pa = PlusN-m a
           module pb = PlusN-m b
-          Tγ = (Type-f.map pb.unit (applyAll a (TVar T)))
           tv′ = Ⓢ ((tv ⨁ a) ⨁ b)             
-          τs↑ = (Vec-f.map (_↑t) τs)
+          Tγ : Type ((tv ⨁ a) ⨁ b)
+          Tγ = (Type-f.map pb.unit (applyAll a (TVar T)))
+          
+          β↑ : Type tv′
           β↑ = (Type-f.map (pb.unit ∘ pa.unit) β) ↑t
+          α↑ : Type ((tv ⨁ a) ⨁ b)             
           α↑ = (Type-f.map (pb.unit ∘ pa.unit) α)
+          e↑ : Expression _ tv′ _
           e↑ = (Exp-f₂.map (pb.unit ∘ pa.unit) e) ↑e
           Γ↑ : ∀ {x} → Name ev x → TypeSchema tv′ x
           Γ↑ = (TypeSchema-f.map (pb.unit ∘ pa.unit) ∘ Γ) ↑Γ
@@ -78,7 +97,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           δ = TVar (zero)
           Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
           Γ′ [] Γ = Γ 
-          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
+          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ ) 
    
   genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}
                               (Γ : Environment ev tv)(e : Alternatives ev tv r)(α β : Type tv) 
@@ -87,16 +106,14 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
   genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative  Γ a  α β 
                                           ∧′ genConstraintAlternatives Γ as α β
   genConstraint {tv = tv} Γ (Var (DC d)) τ with Γ (DC d)
+  ... | DC∀ a · τs ⟶ k = let τ′ = funType τs (applyAll a (TVar k)) 
+                           in Ⅎ′ a · Type-f.map (pa.unit) τ ∼′ τ′
+   where module pa = PlusN-m a
+  genConstraint {tv = tv} Γ (Var (GDC d)) τ with Γ (GDC d)
   ... | DC∀′ a , b · q ⇒ τs ⟶ k = let τ′ = funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) 
                                     in Ⅎ′ a · Ⅎ′ b · QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼′ τ′
    where module pa = PlusN-m a
          module pb = PlusN-m b
-         module paf = PlusN-f a
-         funType : ∀{tv}{n} → Vec (Type tv) n → Type tv → Type tv
-         funType [] t = t
-         funType (x ∷ xs) t = x ⟶ (funType xs t) 
-         
-
 
   genConstraint Γ (Var (N v)) τ with Γ (N v)
   ... | ∀′ n · q ⇒ t = Ⅎ′ n · QC q ∧′ Type-f.map pn.unit τ ∼′ t

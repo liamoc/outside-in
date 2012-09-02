@@ -96,7 +96,7 @@ module OutsideIn.Instantiations.Simple where
   thick zero zero = zero
   thick zero (suc y) = suc y
   thick {zero } (suc ()) _ 
-  thick {suc _} (suc x)  zero = zero
+  thick {suc _} (suc x)  zero = suc zero
   thick {suc _} (suc x) (suc y) with thick x y
   ... | zero = zero
   ... | suc n = suc (suc n)

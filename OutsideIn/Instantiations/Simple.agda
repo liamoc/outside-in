@@ -269,11 +269,52 @@ module OutsideIn.Instantiations.Simple where
   shapify (ε) = Nullary , ε
   
 
-  simplifier : {x : Set} → Eq x → (n : ℕ) → SConstraint (x ⨁ n) → SConstraint (x ⨁ n) 
-                         → SConstraint (x ⨁ n) → SimplifierResult x n
-  simplifier {x} eq n con₀ con₁ con₂ with shapify (con₀ ∧′ (con₁ ∧′ con₂))
-  ... | r , v = constraint {r}{x}{n} eq v
      
+
+  
+
+  data AxiomScheme (n : Set) : Set where
+    ax : AxiomScheme n
+
+  coerceAxioms : ∀ {a b} → AxiomScheme a → AxiomScheme b
+  coerceAxioms ax = ax
+
+  coerceId : ∀ {x} → isIdentity (coerceAxioms {x} {x})
+  coerceId {_}{ax} = refl
+
+  simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) → SConstraint (x ⨁ n) 
+                         → SConstraint (x ⨁ n) → SimplifierResult x n
+  simplifier {x} eq n ax con₁ con₂ with shapify (con₁ ∧′ con₂)
+  ... | r , v = constraint {r}{x}{n} eq v
+
+  open Monad (type-is-monad)
+  open Functor (type-is-functor)
+  data _,_⊩_ {n : Set}(Q : AxiomScheme n) : SConstraint n → SConstraint n → Set where
+    ent-refl  : ∀ {q q′} → Q , (q ∧′ q′) ⊩ q′ 
+    ent-trans : ∀ {q q₁ q₂ q₃} → Q , (q ∧′ q₁) ⊩ q₂ → Q , (q ∧′ q₂) ⊩ q₃ → Q , (q ∧′ q₁) ⊩ q₃
+    ent-typeq-refl : ∀ {q}{τ} → Q , q ⊩ (τ ∼ τ)
+    ent-typeq-sym : ∀ {q}{τ₁ τ₂} → Q , q ⊩ (τ₁ ∼ τ₂) → Q , q ⊩ (τ₂ ∼ τ₁)
+    ent-typeq-trans : ∀ {q}{τ₁ τ₂ τ₃} → Q , q ⊩ (τ₁ ∼ τ₂) → Q , q ⊩ (τ₂ ∼ τ₃) → Q , q ⊩ (τ₁ ∼ τ₃)
+    ent-conj : ∀ {q q₁ q₂} → Q , q ⊩ q₁ → Q , q ⊩ q₂ → Q , q ⊩ (q₁ ∧′ q₂)
+
+  ent-subst : ∀ {a b}{θ : a → Type b}{Q : AxiomScheme a}{q q₁ q₂ : SConstraint a} → Q , (q ∧′ q₁) ⊩ q₂ → coerceAxioms Q , constraint-types (join ∘ map θ) (q ∧′ q₁) ⊩ constraint-types (join ∘ map θ) q₂
+  ent-subst ent-refl = ent-refl
+  ent-subst (ent-trans a b) = ent-trans (ent-subst a) (ent-subst b)
+  ent-subst (ent-typeq-refl) = ent-typeq-refl
+  ent-subst (ent-typeq-sym a) = ent-typeq-sym (ent-subst a)
+  ent-subst (ent-typeq-trans a b) = ent-typeq-trans (ent-subst a) (ent-subst b)
+  ent-subst (ent-conj a b) = ent-conj (ent-subst a) (ent-subst b)
+
+  ent-typeq-subst : ∀ {a b}{Q : AxiomScheme a}{q : SConstraint a}{τ₁ τ₂ : Type a}{θ : a → Type b} → Q , q ⊩ (τ₁ ∼ τ₂) → coerceAxioms Q , constraint-types (join ∘ map θ) q ⊩ ((join ∘ map θ) τ₁ ∼ (join ∘ map θ) τ₂)
+  ent-typeq-subst ent-refl = ent-refl
+  ent-typeq-subst (ent-trans a b) = ent-trans (ent-subst a) (ent-typeq-subst b)
+  ent-typeq-subst (ent-typeq-refl) = ent-typeq-refl
+  ent-typeq-subst (ent-typeq-sym a) = ent-typeq-sym (ent-typeq-subst a)
+  ent-typeq-subst (ent-typeq-trans a b) = ent-typeq-trans (ent-typeq-subst a) (ent-typeq-subst b)
+
+
+
+
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
                      ; Type = Type
@@ -284,9 +325,18 @@ module OutsideIn.Instantiations.Simple where
                      ; funType = _⟶_; appType = _·_
                      ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε 
                      ; simplifier = simplifier
-                     ; AxiomScheme = SConstraint
-                     ; axiomscheme-types = constraint-types
-                     ; axiomscheme-is-functor = sconstraint-is-functor
+                     ; AxiomScheme = AxiomScheme
+                     ; axiomscheme-types = λ f → coerceAxioms
+                     ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}
+                     ; _,_⊩_ = _,_⊩_ 
+                     ; ent-refl = ent-refl 
+                     ; ent-trans = ent-trans 
+                     ; ent-subst = ent-subst 
+                     ; ent-typeq-refl = ent-typeq-refl 
+                     ; ent-typeq-sym = ent-typeq-sym 
+                     ; ent-typeq-trans = ent-typeq-trans 
+                     ; ent-typeq-subst = ent-typeq-subst
+                     ; ent-conj = ent-conj 
                      }
 
 

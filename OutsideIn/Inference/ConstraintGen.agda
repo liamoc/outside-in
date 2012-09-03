@@ -109,7 +109,6 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
   ... | DC∀ a · τs ⟶ k = let τ′ = funType τs (applyAll a (TVar k)) 
                            in Ⅎ′ a · Type-f.map (pa.unit) τ ∼′ τ′
    where module pa = PlusN-m a
-  genConstraint {tv = tv} Γ (Var (GDC d)) τ with Γ (GDC d)
   ... | DC∀′ a , b · q ⇒ τs ⟶ k = let τ′ = funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) 
                                     in Ⅎ′ a · Ⅎ′ b · QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼′ τ′
    where module pa = PlusN-m a

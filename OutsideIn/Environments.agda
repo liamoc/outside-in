@@ -19,8 +19,7 @@ module OutsideIn.Environments(x : X) where
   (⟨ τ ⟩, Γ) (N zero) = τ
   (⟨ τ ⟩, Γ) (N (suc n)) = Γ (N n)
   (⟨ τ ⟩, Γ) (DC n) = Γ (DC n)
-  (⟨ τ ⟩, Γ) (GDC n) = Γ (GDC n)
-
+  
   _↑Γ : {ev tv : Set} → Environment ev tv → Environment ev (Ⓢ tv)
   Γ ↑Γ = TS-f.map suc ∘ Γ
 

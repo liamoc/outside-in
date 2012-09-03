@@ -95,8 +95,6 @@ module Scratch where
   Γ : Environment ⊥ TCs
   Γ (DC True) = DC∀ 0 · [] ⟶ BoolT 
   Γ (DC False) = DC∀ 0 · [] ⟶ BoolT 
-  Γ (GDC True) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
-  Γ (GDC False) = DC∀′ 0 , 0 · SConstraint.ε ⇒ [] ⟶ BoolT 
   Γ (N ()) 
   open import Data.Fin
 

@@ -75,7 +75,7 @@ module OutsideIn.Instantiations.Simple where
            s-comp {x = a ∼ b} = cong₂ _∼_ composite composite
            s-comp {x = a ∧′ b} = cong₂ _∧′_ s-comp s-comp
 
-  data Ax : Set where ax : Ax
+
 
   _⟶_ : ∀ {n} → Type n → Type n → Type n
   a ⟶ b = (funTy · a) · b
@@ -269,9 +269,9 @@ module OutsideIn.Instantiations.Simple where
   shapify (ε) = Nullary , ε
   
 
-  simplifier : {x : Set} → Eq x → (n : ℕ) → Ax → SConstraint (x ⨁ n) 
+  simplifier : {x : Set} → Eq x → (n : ℕ) → SConstraint (x ⨁ n) → SConstraint (x ⨁ n) 
                          → SConstraint (x ⨁ n) → SimplifierResult x n
-  simplifier {x} eq n _ con₁ con₂ with shapify (con₁ ∧′ con₂) 
+  simplifier {x} eq n con₀ con₁ con₂ with shapify (con₀ ∧′ (con₁ ∧′ con₂))
   ... | r , v = constraint {r}{x}{n} eq v
      
   Simple : (ℕ → Set) → X
@@ -280,11 +280,13 @@ module OutsideIn.Instantiations.Simple where
                      ; QConstraint = SConstraint
                      ; type-is-monad = type-is-monad
                      ; qconstraint-is-functor = sconstraint-is-functor
+                     ; constraint-types = constraint-types
                      ; funType = _⟶_; appType = _·_
                      ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε 
-                     ; AxiomScheme = Ax
                      ; simplifier = simplifier
-                     ; constraint-types = constraint-types
+                     ; AxiomScheme = SConstraint
+                     ; axiomscheme-types = constraint-types
+                     ; axiomscheme-is-functor = sconstraint-is-functor
                      }
 
 

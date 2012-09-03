@@ -24,6 +24,7 @@ module OutsideIn.Inference(x : X) where
   private
     module PlusN-m {n} = Monad(PlusN-is-monad {n})
     module QC-f = Functor(qconstraint-is-functor)
+    module Ax-f = Functor(axiomscheme-is-functor)
     module Exp-f {ev}{s} = Functor(expression-is-functor₂ {ev}{s})
     module TS-f {x} = Functor(type-schema-is-functor {x})
     module Type-m  = Monad(type-is-monad) 
@@ -41,17 +42,17 @@ module OutsideIn.Inference(x : X) where
   ... | m , c = suc m , Type-f.map (PlusN-m.unit {m}) (Type-m.unit zero) , separate c
 
 
-  solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme →  QConstraint x 
+  solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme x →  QConstraint x 
         → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
-  solve {x} m eq axioms given (s , c) = solver eq m axioms ( QC-f.map (PlusN-m.unit {m}) given ) c
+  solve {x} m eq axioms given (s , c) = solver eq m (Ax-f.map (PlusN-m.unit {m}) axioms) ( QC-f.map (PlusN-m.unit {m}) given ) c
 
   open Type-m
   open import Data.Empty
 
-  go :  {ev tv : Set}(Q : AxiomScheme)(Γ : Environment ev tv) → Eq tv → Program ev tv → (∃ (λ m → Environment m tv))
+  go :  {ev tv : Set}(Q : AxiomScheme tv)(Γ : Environment ev tv) → Eq tv → Program ev tv → (∃ (λ m → Environment m tv))
   go Q Γ eq end = (_ , Γ)
   go Q Γ eq (bind₂ n · e ∷ Qc ⇒ τ , prog) with generate (TS-f.map (PlusN-m.unit {n}) ∘ Γ) e τ 
-  ... | fuv , C with solve fuv (PlusN-eq {n} eq) Q Qc C
+  ... | fuv , C with solve fuv (PlusN-eq {n} eq) (Ax-f.map (PlusN-m.unit {n}) Q) Qc C
   ...     | suc (Solved θ) =  go Q (⟨ ∀′ n · Qc ⇒ τ ⟩, Γ) eq prog
   ...     | _ =  _ , Γ
   go Q Γ eq (bind₁ e , prog) with generate′ Γ e  

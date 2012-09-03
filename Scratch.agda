@@ -46,7 +46,7 @@ module Scratch where
   conn : SConstraint  (TCs ⨁ 2) 
   conn =  (Var (suc zero)) Simple.∼ ((funTy · Var zero) · Var zero)
 
-  v = Simple.simplifier (λ a b → true) 1 ax SConstraint.ε conn
+  v = Simple.simplifier (λ a b → true) 1 SConstraint.ε SConstraint.ε conn
   test₁ : ∃ (λ m → ∃ (λ Qr → ∃ (λ θ → v ≡ Unsolved {m = m} Qr θ)))
   test₁ with shapify conn
   ... | s , c = _ , _ , _ , refl
@@ -100,7 +100,7 @@ module Scratch where
   Γ (N ()) 
   open import Data.Fin
 
-  test = go ax Γ (λ a b → true) p
-  test2 = go ax Γ (λ a b → true) p2 
+  test = go SConstraint.ε Γ (λ a b → true) p
+  test2 = go SConstraint.ε Γ (λ a b → true) p2 
   test′ = generate′ Γ e2 
   

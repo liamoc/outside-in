@@ -12,29 +12,30 @@ module OutsideIn.Inference.Solver(x : X) where
 
   private module PlusN-m {n} = Monad (PlusN-is-monad {n})
           module QC-f = Functor (qconstraint-is-functor)
+          module Ax-f = Functor (axiomscheme-is-functor)
           module Type-f = Functor (type-is-functor)
           module Type-m = Monad (type-is-monad)
 
   solver : {x : Set}{s : Shape} → Eq x 
-         → (n : ℕ) → AxiomScheme →  QConstraint (x ⨁ n) →  SeparatedConstraint (x ⨁ n) s
+         → (n : ℕ) → AxiomScheme (x ⨁ n) →  QConstraint (x ⨁ n) →  SeparatedConstraint (x ⨁ n) s
          → Ⓢ (SimplifierResult x n)
-  solveImps : {x : Set}{s : Shape} → Eq x → AxiomScheme →  QConstraint x → Implications x s
+  solveImps : {x : Set}{s : Shape} → Eq x → AxiomScheme x →  QConstraint x → Implications x s
             → Bool
   solver {x} eq n axioms given (SC simpl imps) with simplifier eq n axioms given simpl
   ... | Solved {m = m} θ = if solveImps (PlusN-eq {m} eq) 
-                                        axioms 
+                                        (ax-substitute θ axioms) 
                                         (qc-substitute θ given) 
                                         (substituteImp θ imps) 
                     then suc (Solved {m = m} θ) 
                     else zero
   ... | Unsolved {m = m} Qr θ = if solveImps (PlusN-eq {m} eq) 
-                                             axioms 
+                                             (ax-substitute θ axioms) 
                                              (Qr ∧ qc-substitute θ given) 
                                              (substituteImp θ imps) 
                                  then suc (Unsolved {m = m} Qr θ) 
                                  else zero
   solveImps eq axioms given (imp-ε) = true
-  solveImps eq axioms given (imp (∃ n · Q ⊃ C)) with solver eq n axioms 
+  solveImps eq axioms given (imp (∃ n · Q ⊃ C)) with solver eq n (Ax-f.map (PlusN-m.unit {n}) axioms )
                                                             (QC-f.map (PlusN-m.unit {n}) 
                                                                       given 
                                                             ∧ Q) 

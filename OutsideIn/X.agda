@@ -5,6 +5,11 @@ module OutsideIn.X where
 
    
    module SimpRes(QConstraint : Set → Set)(Type : Set → Set) where
+
+     record SimplifierConditions : Set where
+        
+
+
      data SimplifierResult (x : Set)( n : ℕ ) : Set where
        Solved : ∀ {m} → (x ⨁ n → Type (x ⨁ m)) → SimplifierResult x n
        Unsolved : ∀ {m} → QConstraint (x ⨁ m) → (x ⨁ n → Type (x ⨁ m))  
@@ -27,17 +32,24 @@ module OutsideIn.X where
             constraint-types : ∀ {a b} → (Type a → Type b) → QConstraint a → QConstraint b 
 
 
-      field AxiomScheme : Set 
+      field AxiomScheme : Set → Set
+            axiomscheme-is-functor : Functor AxiomScheme
+            axiomscheme-types : ∀ {a b} → (Type a → Type b) → AxiomScheme a → AxiomScheme b 
 
       open SimpRes(QConstraint)(Type) 
 
-      field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme 
+      field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
                        → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → SimplifierResult x n
       open SimpRes(QConstraint)(Type) public
 
       type-is-functor = Monad.is-functor type-is-monad
       qc-substitute : ∀{a b} →  (a → Type b) → (QConstraint a → QConstraint b)
       qc-substitute f =  constraint-types (join ∘ map f)
+         where open Monad (type-is-monad)
+               open Functor (type-is-functor)
+
+      ax-substitute : ∀{a b} →  (a → Type b) → (AxiomScheme a → AxiomScheme b)
+      ax-substitute f =  axiomscheme-types (join ∘ map f)
          where open Monad (type-is-monad)
                open Functor (type-is-functor)
    

@@ -47,15 +47,10 @@ module Scratch where
   conn =  (Var (suc zero)) Simple.∼ ((funTy · Var zero) · Var zero)
 
   v = Simple.simplifier (λ a b → true) 1 ax SConstraint.ε conn
-  test₁ : ∃ (λ m → ∃ (λ Qr → ∃ (λ θ → v ≡ Unsolved {m = m} Qr θ)))
-  test₁ with shapify conn
-  ... | s , c = _ , _ , _ , refl
+
 
   open import Data.List
 
-  mlerp : (TCs ⨁ 2) → ∃ (λ m → Simple.Type m)
-  mlerp x with test₁
-  ... | m , Qr , θ , eq = _ , θ x
 
   
 

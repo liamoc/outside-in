@@ -80,7 +80,7 @@ module OutsideIn.Instantiations.Simple where
   _⟶_ : ∀ {n} → Type n → Type n → Type n
   a ⟶ b = (funTy · a) · b
 
-  open SimpRes(SConstraint)(Type)
+  open SimpRes(SConstraint)(Type)(ε)
 
   data SVar (tc : Set)(n : ℕ) : Set where
     base : tc → SVar tc n
@@ -242,26 +242,20 @@ module OutsideIn.Instantiations.Simple where
   
 
 
-  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s 
-             → SimplifierResult tc m
+  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s  → SimplifierResult tc m
   constraint {Unary _} _ ()
-  constraint {Nullary}{tc}{m} eq ε = Solved {m = m} Var
+  constraint {Nullary}{tc}{m} eq ε = m , ε , solved ε Var
   constraint {Nullary}{tc}{m} eq (a ∼ b) with mgu′ {tc}{m} eq a b
-  ... | suc (n , θ) = Solved {m = n} θ
-  ... | zero = Unsolved {m = m} (a ∼ b) Var
+  ... | suc (n , θ) = n , ε , solved ε θ
+  ... | zero = m , (a ∼ b) , solved _ Var
   constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) with constraint {r₁}{tc}{m} eq a
-  ... | Unsolved {n} Qr θ with constraint {r₂}{tc}{n} eq (applySubst θ b)
-  ...                     | Solved {n′} θ′ = Unsolved {m = n′} (applySubst′ θ′ Qr) (θ′ >=> θ)
+  ... | n , Qr , solved .Qr θ with constraint {r₂}{tc}{n} eq (applySubst θ b)
+  ...                         | n′ , Qr′ , solved .Qr′ θ′ =  n′ , (Qr′ special-∧ applySubst′ θ′ Qr) , solved _ (θ′ >=> θ)
     where open Monad (type-is-monad)
-  ...                     | Unsolved {n′} Qr′ θ′ = Unsolved {m = n′} (Qr′ ∧′ applySubst′ θ′ Qr) (θ′ >=> θ)
-    where open Monad (type-is-monad)
-  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) | Solved {n} θ 
-                with constraint {r₂}{tc}{n} eq (applySubst θ b) 
-  ...           | Unsolved {n′} Qr′ θ′  = Unsolved {m = n′} Qr′ (θ′ >=> θ)  
-    where open Monad (type-is-monad)
-  ...           | Solved {n′} θ′ = Solved {m = n′} (θ′ >=> θ)
-    where open Monad (type-is-monad)
-
+          _special-∧_ : ∀ {n} → SConstraint n → SConstraint n → SConstraint n
+          ε special-∧ n = n 
+          n special-∧ ε = n 
+          n special-∧ m = n ∧′ m
   shapify : ∀ {a} → SConstraint a → ∃ (SConstraintShape a)
   shapify (a ∼ b) = Nullary , a ∼ b
   shapify (a ∧′ b) with shapify a | shapify b
@@ -287,6 +281,13 @@ module OutsideIn.Instantiations.Simple where
   simplifier {x} eq n ax con₁ con₂ with shapify (con₁ ∧′ con₂)
   ... | r , v = constraint {r}{x}{n} eq v
 
+  simplifier′ : {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) → SConstraint (x ⨁ n) 
+                         → SConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
+  simplifier′ {x} eq n ax con₁ con₂ with simplifier eq n ax con₁ con₂
+  ... | m , ε , sol = suc (m , sol)
+  ... | m , _ , sol = zero
+
+
   open Monad (type-is-monad)
   open Functor (type-is-functor)
   data _,_⊩_ {n : Set}(Q : AxiomScheme n) : SConstraint n → SConstraint n → Set where
@@ -305,15 +306,16 @@ module OutsideIn.Instantiations.Simple where
   ent-subst (ent-typeq-trans a b) = ent-typeq-trans (ent-subst a) (ent-subst b)
   ent-subst (ent-conj a b) = ent-conj (ent-subst a) (ent-subst b)
 
-  ent-typeq-subst : ∀ {a b}{Q : AxiomScheme a}{q : SConstraint a}{τ₁ τ₂ : Type a}{θ : a → Type b} → Q , q ⊩ (τ₁ ∼ τ₂) → coerceAxioms Q , constraint-types (join ∘ map θ) q ⊩ ((join ∘ map θ) τ₁ ∼ (join ∘ map θ) τ₂)
+  ent-typeq-subst : ∀ {a b}{Q : AxiomScheme a}{q : SConstraint a}{τ₁ τ₂ : Type a}{θ : a → Type b} 
+                  → Q , q ⊩ (τ₁ ∼ τ₂) → coerceAxioms Q , constraint-types (join ∘ map θ) q 
+                                      ⊩ ((join ∘ map θ) τ₁ ∼ (join ∘ map θ) τ₂)
   ent-typeq-subst ent-refl = ent-refl
   ent-typeq-subst (ent-trans a b) = ent-trans (ent-subst a) (ent-typeq-subst b)
   ent-typeq-subst (ent-typeq-refl) = ent-typeq-refl
   ent-typeq-subst (ent-typeq-sym a) = ent-typeq-sym (ent-typeq-subst a)
   ent-typeq-subst (ent-typeq-trans a b) = ent-typeq-trans (ent-typeq-subst a) (ent-typeq-subst b)
 
-
-
+ 
 
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
@@ -325,6 +327,7 @@ module OutsideIn.Instantiations.Simple where
                      ; funType = _⟶_; appType = _·_
                      ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε 
                      ; simplifier = simplifier
+                     ; simplifier′ = simplifier′
                      ; AxiomScheme = AxiomScheme
                      ; axiomscheme-types = λ f → coerceAxioms
                      ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}

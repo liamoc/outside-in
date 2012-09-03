@@ -4,12 +4,22 @@ module OutsideIn.X where
 
 
    
-   module SimpRes(QConstraint : Set → Set)(Type : Set → Set) where
+   module SimpRes(QConstraint : Set → Set)(Type : Set → Set)( ε : ∀ {n} → QConstraint n) where
 
-     data SimplifierResult (x : Set)( n : ℕ ) : Set where
-       Solved : ∀ {m} → (x ⨁ n → Type (x ⨁ m)) → SimplifierResult x n
-       Unsolved : ∀ {m} → QConstraint (x ⨁ m) → (x ⨁ n → Type (x ⨁ m))  
-                → SimplifierResult x n
+     data SimplifierResult′ (x : Set)( n m : ℕ ) : QConstraint (x ⨁ m) → Set where
+       solved : (q : QConstraint (x ⨁ m)) → (x ⨁ n → Type (x ⨁ m)) → SimplifierResult′ x n m q
+
+     SimplifierResult : Set → ℕ → Set 
+     SimplifierResult x n = ∃ (λ m → ∃ (SimplifierResult′ x n m))
+
+     SimplifierResultNoResidual : Set → ℕ → Set
+     SimplifierResultNoResidual x n = ∃ (λ m → SimplifierResult′ x n m ε)
+
+     substitutionOf : ∀ {x}{n} → SimplifierResult x n → ∃ (λ m → (x ⨁ n) → Type (x ⨁ m))
+     substitutionOf (m , q , solved .q θ) = m , θ
+
+     substitutionOf′ : ∀ {x}{n} → SimplifierResultNoResidual x n → ∃ (λ m → (x ⨁ n) → Type (x ⨁ m))
+     substitutionOf′ (m , solved .ε θ) = m , θ
 
    record X : Set₁ where
       field dc : ℕ → Set
@@ -33,7 +43,7 @@ module OutsideIn.X where
             axiomscheme-types : ∀ {a b} → (Type a → Type b) → AxiomScheme a → AxiomScheme b 
 
 
-      open Monad (type-is-monad)
+      open Monad (type-is-monad) hiding (_>>=_)
       open Functor (is-functor)
       field _,_⊩_ : ∀ {n} → AxiomScheme n → QConstraint n → QConstraint n → Set
             ent-refl : ∀ {n}{Q : AxiomScheme n}{q q′ : QConstraint n}
@@ -66,10 +76,23 @@ module OutsideIn.X where
 
 
 
-      open SimpRes(QConstraint)(Type) 
+      open SimpRes(QConstraint)(Type)(ε) 
+      private
+        module Ⓢ-m = Monad (Ⓢ-is-monad) 
+        module Ⓢ-f = Functor (Ⓢ-m.is-functor)
 
       field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
                        → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → SimplifierResult x n
+      field simplifier′ : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
+                       → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
 
-      open SimpRes(QConstraint)(Type) public
+{-
+      field simplifiers-consistent₁ : ∀ {x}{e : Eq x}{n : ℕ}{Q : AxiomScheme (x ⨁ n)}{q₁ q₂ : QConstraint (x ⨁ n)}{m}{θ}
+                                    → (simplifier e n Q q₁ q₂) ≡ (m , ε , θ)
+                                    → simplifier′ e n Q q₁ q₂ ≡ suc (m , θ)
+      field simplifiers-consistent₂ : ∀ {x}{e : Eq x}{n : ℕ}{Q : AxiomScheme (x ⨁ n)}{q₁ q₂ : QConstraint (x ⨁ n)}{m}{θ}
+                                    → simplifier′ e n Q q₁ q₂ ≡ suc (m , θ)
+                                    → (simplifier e n Q q₁ q₂) ≡ (m , ε , θ)
+-}
+      open SimpRes(QConstraint)(Type)(ε) public
    

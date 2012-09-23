@@ -281,11 +281,10 @@ module OutsideIn.Instantiations.Simple where
   simplifier {x} eq n ax con₁ con₂ with shapify (con₁ ∧′ con₂)
   ... | r , v = constraint {r}{x}{n} eq v
 
-  simplifier′ : {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) → SConstraint (x ⨁ n) 
-                         → SConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
-  simplifier′ {x} eq n ax con₁ con₂ with simplifier eq n ax con₁ con₂
-  ... | m , ε , sol = suc (m , sol)
-  ... | m , _ , sol = zero
+  is-ε : ∀ {m} (x : SConstraint m) → Dec (x ≡ ε)
+  is-ε ε = yes refl
+  is-ε (a ∧′ b) = no (λ ())  
+  is-ε (a ∼ b) = no (λ ())  
 
 
   open Monad (type-is-monad)
@@ -325,9 +324,8 @@ module OutsideIn.Instantiations.Simple where
                      ; qconstraint-is-functor = sconstraint-is-functor
                      ; constraint-types = constraint-types
                      ; funType = _⟶_; appType = _·_
-                     ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε 
+                     ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
                      ; simplifier = simplifier
-                     ; simplifier′ = simplifier′
                      ; AxiomScheme = AxiomScheme
                      ; axiomscheme-types = λ f → coerceAxioms
                      ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}

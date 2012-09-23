@@ -1,7 +1,7 @@
 open import OutsideIn.Prelude
 module OutsideIn.X where
    open import Data.Product public hiding (map) 
-
+   open import Relation.Nullary
 
    
    module SimpRes(QConstraint : Set → Set)(Type : Set → Set)( ε : ∀ {n} → QConstraint n) where
@@ -36,6 +36,7 @@ module OutsideIn.X where
             _∧_ : ∀ {n} → QConstraint n → QConstraint n → QConstraint n
             ε : ∀ {n} → QConstraint n
             constraint-types : ∀ {a b} → (Type a → Type b) → QConstraint a → QConstraint b 
+            is-ε : ∀ {n} (x : QConstraint n) → Dec (x ≡ ε)
 
 
       field AxiomScheme : Set → Set
@@ -83,16 +84,12 @@ module OutsideIn.X where
 
       field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
                        → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → SimplifierResult x n
-      field simplifier′ : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
-                       → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
+      simplifier′ : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
+                  → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
+      simplifier′ eq n ax g e with simplifier eq n ax g e 
+      simplifier′ eq n ax g e | m , Qr , result with is-ε Qr
+      simplifier′ eq n ax g e | m , .ε , result | yes refl = suc (m , result)
+      simplifier′ eq n ax g e | m , Qr , result | no  p = zero
 
-{-
-      field simplifiers-consistent₁ : ∀ {x}{e : Eq x}{n : ℕ}{Q : AxiomScheme (x ⨁ n)}{q₁ q₂ : QConstraint (x ⨁ n)}{m}{θ}
-                                    → (simplifier e n Q q₁ q₂) ≡ (m , ε , θ)
-                                    → simplifier′ e n Q q₁ q₂ ≡ suc (m , θ)
-      field simplifiers-consistent₂ : ∀ {x}{e : Eq x}{n : ℕ}{Q : AxiomScheme (x ⨁ n)}{q₁ q₂ : QConstraint (x ⨁ n)}{m}{θ}
-                                    → simplifier′ e n Q q₁ q₂ ≡ suc (m , θ)
-                                    → (simplifier e n Q q₁ q₂) ≡ (m , ε , θ)
--}
       open SimpRes(QConstraint)(Type)(ε) public
    

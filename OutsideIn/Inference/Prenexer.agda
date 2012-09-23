@@ -21,12 +21,9 @@ module OutsideIn.Inference.Prenexer(x : X) where
            module pnb = PlusN-m nb
            module pnb-f = PlusN-f nb
   prenex {n} (Imp (∃ v · q ⊃ c)) with prenex {n ⨁ v} c
-  ... | m , c′ = 0 , Imp (∃ v + m · subst QConstraint 
-                                          (sym (PlusN-collect {n}{v}{m})) 
-                                          (QC-f.map pm.unit q) 
-                                  ⊃ subst (λ x → Constraint x Flat) 
-                                          (sym (PlusN-collect {n}{v}{m})) 
-                                          c′)
+  ... | m , c′ = 0 , Imp (∃ v + m · q ⊃ subst (λ x → Constraint x Flat) 
+                                              (sym (PlusN-collect {n}{v}{m})) 
+                                              c′)
      where module pm = PlusN-m m
   prenex (Ⅎ_ {Extended} x) with prenex x
   ... | n , x′ = suc n , x′

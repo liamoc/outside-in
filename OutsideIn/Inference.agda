@@ -44,9 +44,9 @@ module OutsideIn.Inference(x : X) where
 
   solve : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme x →  QConstraint x 
         → ∃ (SeparatedConstraint (x ⨁ m)) → Ⓢ (SimplifierResult x m)
-  solve {x} m eq axioms given (s , c) = solver eq m (Ax-f.map (PlusN-m.unit {m}) axioms) ( QC-f.map (PlusN-m.unit {m}) given ) c
+  solve {x} m eq axioms given (s , c) = solver eq m axioms given c
   solve′ : ∀ {x : Set}(m : ℕ) → Eq x → AxiomScheme x →  QConstraint x  → ∃ (SeparatedConstraint (x ⨁ m)) → Bool
-  solve′ {x} m eq axioms given (s , c) = solver′ eq m (Ax-f.map (PlusN-m.unit {m}) axioms) ( QC-f.map (PlusN-m.unit {m}) given ) c
+  solve′ {x} m eq axioms given (s , c) = solver′ eq m axioms given c
 
 
   open Type-m

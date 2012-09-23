@@ -9,7 +9,7 @@ module OutsideIn.Constraints( x : X) where
 
 
   data Implication (knot : Set → Set)(n : Set) : Set where
-    ∃_·_⊃_ : (v : ℕ) → QConstraint (n ⨁ v) → knot (n ⨁ v) → Implication knot n
+    ∃_·_⊃_ : (v : ℕ) → QConstraint n → knot (n ⨁ v) → Implication knot n
   
 
   {- SYNTAX -}  
@@ -57,14 +57,14 @@ module OutsideIn.Constraints( x : X) where
     fmap-c : ∀ {s}{a b} → (a → b) → Constraint a s → Constraint b s
     fmap-c f (QC x) = QC (QC-f.map f x)
     fmap-c f (C₁ ∧′ C₂) = (fmap-c f C₁) ∧′ (fmap-c f C₂)
-    fmap-c f (Imp (∃ n · Q ⊃ C)) = Imp (∃ n · (QC-f.map (pn.map f) Q) ⊃ (fmap-c (pn.map f) C))
+    fmap-c f (Imp (∃ n · Q ⊃ C)) = Imp (∃ n · (QC-f.map f Q) ⊃ (fmap-c (pn.map f) C))
       where module pn = PlusN-f n 
     fmap-c f (Ⅎ C) = Ⅎ (fmap-c (Ⓢ-f.map f) C)
     fmap-c-id : ∀{s}{A : Set} {f : A → A} → isIdentity f → isIdentity (fmap-c {s} f)
     fmap-c-id {f = f} isid {QC x       } = cong QC (QC-f.identity isid)
     fmap-c-id {f = f} isid {Imp(∃ n · Q ⊃ C)} = cong Imp 
                                                      (cong₂ (∃_·_⊃_ n) 
-                                                            (QC-f.identity (pn.identity isid))
+                                                            (QC-f.identity isid)
                                                             (fmap-c-id (pn.identity isid)))
         where module pn = PlusN-f n
     fmap-c-id {f = f} isid {C₁ ∧′ C₂} = cong₂ _∧′_ (fmap-c-id isid) (fmap-c-id isid)
@@ -75,9 +75,7 @@ module OutsideIn.Constraints( x : X) where
     fmap-c-comp {x = C₁ ∧′ C₂} = cong₂ _∧′_ (fmap-c-comp {x = C₁}) (fmap-c-comp {x = C₂})
     fmap-c-comp {x = Ⅎ C} = cong Ⅎ_ (combine-composite′ ⦃ Ⓢ-is-functor ⦄ fmap-c fmap-c-comp)
     fmap-c-comp {x = Imp(∃ n · Q ⊃ C)} = cong Imp 
-                                              (cong₂ (∃_·_⊃_ n) 
-                                                     (combine-composite ⦃ qconstraint-is-functor ⦄
-                                                                        ⦃ pn-is-functor {n}⦄)
+                                              (cong₂ (∃_·_⊃_ n) QC-f.composite
                                                      (combine-composite′ ⦃ pn-is-functor {n}⦄ 
                                                                          fmap-c fmap-c-comp))
       where module pn = PlusN-f n

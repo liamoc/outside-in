@@ -40,7 +40,7 @@ module OutsideIn.Inference.Separator(x : X) where
     where open Monad (type-is-monad)
           open Functor (type-is-functor)
   substituteImp f (imp-ε) = imp-ε
-  substituteImp {Unary s} f (imp (∃ n · Q ⊃ C)) = imp (∃ n · constraint-types (join ∘ map f′) Q
+  substituteImp {Unary s} f (imp (∃ n · Q ⊃ C)) = imp (∃ n · constraint-types (join ∘ map f) Q
                                                            ⊃ substituteSep f′ C) 
     where module PlusN-f = Functor (Monad.is-functor (PlusN-is-monad {n})) 
           open Monad (type-is-monad)

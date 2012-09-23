@@ -77,8 +77,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           Γ′ [] Γ = Γ 
           Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
   ... |  DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (Γ′ (Vec-f.map (_↑t) τs) Γ↑) e↑ δ
-                                                  in (Imp (∃ 1 · (Q ↑q) ⊃ (C ∧′ δ ∼′ β↑))) ∧′ 
-                                                     Tγ ∼′ α↑ 
+                                                  in (Imp (∃ 1 · Q ⊃ (C ∧′ δ ∼′ β↑))) ∧′ Tγ ∼′ α↑ 
     where module pa = PlusN-m a
           module pb = PlusN-m b
           tv′ = Ⓢ ((tv ⨁ a) ⨁ b)             

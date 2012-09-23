@@ -19,33 +19,28 @@ module OutsideIn.Inference.Solver(x : X) where
 
 
   solver′ : {x : Set}{s : Shape} → Eq x 
-         → (n : ℕ) → AxiomScheme (x ⨁ n) →  QConstraint (x ⨁ n) →  SeparatedConstraint (x ⨁ n) s
+         → (n : ℕ) → AxiomScheme x →  QConstraint x →  SeparatedConstraint (x ⨁ n) s
          → Bool
-  solveImps : {x : Set}{s : Shape} → Eq x → AxiomScheme x →  QConstraint x → Implications x s
+  solveImps : {x : Set}{n : ℕ}{s : Shape} → Eq x → AxiomScheme x →  QConstraint x → Implications (x ⨁ n) s
             → Bool
   solver′ {x} eq n axioms given (SC simpl imps) with simplifier′ eq n axioms given simpl 
-  ... | suc (m , solved .ε θ) = solveImps (PlusN-eq {m} eq) 
-                                   (ax-substitute θ axioms) 
-                                   (qc-substitute θ given) 
-                                   (substituteImp θ imps) 
+  ... | suc (m , solved .ε θ) = solveImps {n = m} eq axioms given (substituteImp θ imps) 
   ... | zero = false
   solveImps eq axioms given (imp-ε) = true
-  solveImps eq axioms given (imp (∃ n · Q ⊃ C)) = solver′ eq n (Ax-f.map (PlusN-m.unit {n}) axioms )
-                                                          (QC-f.map (PlusN-m.unit {n}) 
-                                                                     given 
-                                                           ∧ Q) 
+  solveImps {x}{m}{Unary s} eq axioms given (imp (∃ n · Q ⊃ C)) = solver′ {x ⨁ m}{s} (PlusN-eq {m} eq) n (Ax-f.map (PlusN-m.unit {m}) axioms )
+                                                          (QC-f.map (PlusN-m.unit {m}) given ∧ Q) 
                                                           C
-  solveImps eq axioms given (a imp-∧ b) = solveImps eq axioms given a 
-                                      and solveImps eq axioms given b 
+  solveImps {x}{n} eq axioms given (a imp-∧ b) = solveImps {x} {n} eq axioms given a 
+                                          and solveImps {x} {n} eq axioms given b 
 
 
   solver : {x : Set}{s : Shape} → Eq x 
-         → (n : ℕ) → AxiomScheme (x ⨁ n) →  QConstraint (x ⨁ n) →  SeparatedConstraint (x ⨁ n) s
+         → (n : ℕ) → AxiomScheme x →  QConstraint x →  SeparatedConstraint (x ⨁ n) s
          → Ⓢ (SimplifierResult x n)
   solver {x} eq n axioms given (SC simpl imps) with simplifier eq n axioms given simpl
-  ... | m , Qr , solved .Qr θ = if solveImps (PlusN-eq {m} eq) 
-                                         (ax-substitute θ axioms) 
-                                         (Qr ∧ qc-substitute θ given) 
+  ... | m , Qr , solved .Qr θ = if solveImps {n = 0} (PlusN-eq {m} eq) 
+                                         (Ax-f.map (PlusN-m.unit {m}) axioms) 
+                                         (Qr ∧ QC-f.map (PlusN-m.unit {m}) given) 
                                          (substituteImp θ imps) 
                                  then suc (m , Qr , solved Qr θ)
                                  else zero

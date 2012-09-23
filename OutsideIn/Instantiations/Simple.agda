@@ -276,9 +276,9 @@ module OutsideIn.Instantiations.Simple where
   coerceId : ∀ {x} → isIdentity (coerceAxioms {x} {x})
   coerceId {_}{ax} = refl
 
-  simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) → SConstraint (x ⨁ n) 
+  simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme x → SConstraint x 
                          → SConstraint (x ⨁ n) → SimplifierResult x n
-  simplifier {x} eq n ax con₁ con₂ with shapify (con₁ ∧′ con₂)
+  simplifier {x} eq n ax con₁ con₂ with shapify con₂
   ... | r , v = constraint {r}{x}{n} eq v
 
   is-ε : ∀ {m} (x : SConstraint m) → Dec (x ≡ ε)

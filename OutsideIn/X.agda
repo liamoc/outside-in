@@ -82,14 +82,17 @@ module OutsideIn.X where
         module Ⓢ-m = Monad (Ⓢ-is-monad) 
         module Ⓢ-f = Functor (Ⓢ-m.is-functor)
 
-      field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
-                       → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → SimplifierResult x n
-      simplifier′ : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme (x ⨁ n) 
-                  → QConstraint (x ⨁ n) → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
+      field simplifier : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme x 
+                       → QConstraint x → QConstraint (x ⨁ n) → SimplifierResult x n
+
+      simplifier′ : ∀ {x : Set} → Eq x → (n : ℕ) → AxiomScheme x 
+                  → QConstraint x → QConstraint (x ⨁ n) → Ⓢ (SimplifierResultNoResidual x n)
       simplifier′ eq n ax g e with simplifier eq n ax g e 
       simplifier′ eq n ax g e | m , Qr , result with is-ε Qr
       simplifier′ eq n ax g e | m , .ε , result | yes refl = suc (m , result)
       simplifier′ eq n ax g e | m , Qr , result | no  p = zero
+      
+      
 
       open SimpRes(QConstraint)(Type)(ε) public
    

@@ -75,12 +75,20 @@ module OutsideIn.Instantiations.Simple where
            s-comp {x = a ∼ b} = cong₂ _∼_ composite composite
            s-comp {x = a ∧′ b} = cong₂ _∧′_ s-comp s-comp
 
-
-
   _⟶_ : ∀ {n} → Type n → Type n → Type n
   a ⟶ b = (funTy · a) · b
 
-  open SimpRes(SConstraint)(Type)(ε)
+
+
+  types : Types
+  types = record { Type = Type
+                 ; type-is-monad = type-is-monad
+                 ; funType = _⟶_; appType = _·_
+                 }
+
+
+
+
 
   data SVar (tc : Set)(n : ℕ) : Set where
     base : tc → SVar tc n
@@ -90,7 +98,6 @@ module OutsideIn.Instantiations.Simple where
   thin zero y          = suc y
   thin (suc x) zero    = zero
   thin (suc x) (suc y) = suc (thin x y)
- 
  
   thick : ∀ {n} → (x y : Fin (suc n)) → Ⓢ (Fin n) 
   thick zero zero = zero
@@ -168,6 +175,7 @@ module OutsideIn.Instantiations.Simple where
           open Monad (type-is-monad)
 
 
+
   mgu : ∀{tc}{m}(eq : Eq tc)(s t : Type (SVar tc m)) → Ⓢ (∃ (AList tc m))
   mgu {m = m} eq s t = amgu eq s t (m , anil)
 
@@ -205,6 +213,7 @@ module OutsideIn.Instantiations.Simple where
   svar-iso₂ {m}{tc} (base v) = pm-m.unit v
    where module pm-m = Monad (PlusN-is-monad {m})
   svar-iso₂ {m}{tc} (unification v) = svar-iso₂′ v
+
   
   open Functor (Monad.is-functor type-is-monad) using () renaming (map to τ-map)
 
@@ -240,33 +249,6 @@ module OutsideIn.Instantiations.Simple where
   applySubst′ f (a ∧′ b) = applySubst′ f a ∧′ applySubst′ f b
   applySubst′ f (ε) = ε
   
-
-
-  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s  → SimplifierResult tc m
-  constraint {Unary _} _ ()
-  constraint {Nullary}{tc}{m} eq ε = m , ε , solved ε Var
-  constraint {Nullary}{tc}{m} eq (a ∼ b) with mgu′ {tc}{m} eq a b
-  ... | suc (n , θ) = n , ε , solved ε θ
-  ... | zero = m , (a ∼ b) , solved _ Var
-  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b) with constraint {r₁}{tc}{m} eq a
-  ... | n , Qr , solved .Qr θ with constraint {r₂}{tc}{n} eq (applySubst θ b)
-  ...                         | n′ , Qr′ , solved .Qr′ θ′ =  n′ , (Qr′ special-∧ applySubst′ θ′ Qr) , solved _ (θ′ >=> θ)
-    where open Monad (type-is-monad)
-          _special-∧_ : ∀ {n} → SConstraint n → SConstraint n → SConstraint n
-          ε special-∧ n = n 
-          n special-∧ ε = n 
-          n special-∧ m = n ∧′ m
-  shapify : ∀ {a} → SConstraint a → ∃ (SConstraintShape a)
-  shapify (a ∼ b) = Nullary , a ∼ b
-  shapify (a ∧′ b) with shapify a | shapify b
-  ... | r₁ , a′ | r₂ , b′ = Binary r₁ r₂ , a′ ∧′ b′
-  shapify (ε) = Nullary , ε
-  
-
-     
-
-  
-
   data AxiomScheme (n : Set) : Set where
     ax : AxiomScheme n
 
@@ -276,18 +258,27 @@ module OutsideIn.Instantiations.Simple where
   coerceId : ∀ {x} → isIdentity (coerceAxioms {x} {x})
   coerceId {_}{ax} = refl
 
-  simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme x → SConstraint x 
-                         → SConstraint (x ⨁ n) → SimplifierResult x n
-  simplifier {x} eq n ax con₁ con₂ with shapify con₂
-  ... | r , v = constraint {r}{x}{n} eq v
+
+  axiom-schemes : AxiomSchemes
+  axiom-schemes = record { AxiomScheme = AxiomScheme
+                         ; axiomscheme-types = λ f → coerceAxioms
+                         ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}
+                         }
 
   is-ε : ∀ {m} (x : SConstraint m) → Dec (x ≡ ε)
   is-ε ε = yes refl
   is-ε (a ∧′ b) = no (λ ())  
   is-ε (a ∼ b) = no (λ ())  
 
+  qconstraints : QConstraints
+  qconstraints = record { QConstraint = SConstraint   
+                        ; qconstraint-is-functor = sconstraint-is-functor
+                        ; constraint-types = constraint-types                 
+                        ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
+                        }
 
-  open Monad (type-is-monad)
+
+  open Monad (type-is-monad) hiding (_>=>_)
   open Functor (type-is-functor)
   data _,_⊩_ {n : Set}(Q : AxiomScheme n) : SConstraint n → SConstraint n → Set where
     ent-refl  : ∀ {q q′} → Q , (q ∧′ q′) ⊩ q′ 
@@ -314,30 +305,71 @@ module OutsideIn.Instantiations.Simple where
   ent-typeq-subst (ent-typeq-sym a) = ent-typeq-sym (ent-typeq-subst a)
   ent-typeq-subst (ent-typeq-trans a b) = ent-typeq-trans (ent-typeq-subst a) (ent-typeq-subst b)
 
- 
+
+
+  shapify : ∀ {a} → SConstraint a → ∃ (SConstraintShape a)
+  shapify (a ∼ b) = Nullary , a ∼ b
+  shapify (a ∧′ b) with shapify a | shapify b
+  ... | r₁ , a′ | r₂ , b′ = Binary r₁ r₂ , a′ ∧′ b′
+  shapify (ε) = Nullary , ε
+  
+
+
+
+  entailment : Entailment
+  entailment = record { _,_⊩_ = _,_⊩_
+                      ; ent-refl = ent-refl
+                      ; ent-trans = ent-trans
+                      ; ent-subst = ent-subst
+                      ; ent-typeq-refl = ent-typeq-refl
+                      ; ent-typeq-sym = ent-typeq-sym
+                      ; ent-typeq-trans = ent-typeq-trans
+                      ; ent-typeq-subst = ent-typeq-subst
+                      ; ent-conj = ent-conj 
+                      }
+
+
+  open SimplificationPrelude ⦃ types ⦄ ⦃ axiom-schemes ⦄ ⦃ qconstraints ⦄ ⦃ entailment ⦄
+
+  constraint : ∀{s}{tc}{m} → Eq tc → SConstraintShape (tc ⨁ m) s  → SimplifierResult tc m
+  constraint {Unary _} _ ()
+  constraint {Nullary}{m = m} _ ε = m , ε , solved ε Var
+  constraint {Nullary}{tc}{m} eq (a ∼ b) = convert (mgu′ {tc}{m} eq a b)
+   where 
+    convert : Ⓢ (∃ (λ n → tc ⨁ m → Type (tc ⨁ n))) →  SimplifierResult tc m
+    convert (suc (n , θ)) = n , ε , solved ε θ
+    convert zero = m , (a ∼ b) , solved _ Var
+  constraint {Binary r₁ r₂}{tc}{m} eq (a ∧′ b)  = convert (constraint {r₁}{tc}{m} eq a)
+    where open Monad (type-is-monad)
+          _special-∧_ : ∀ {n} → SConstraint n → SConstraint n → SConstraint n
+          ε special-∧ n = n 
+          n special-∧ ε = n 
+          n special-∧ m = n ∧′ m
+          convert :  SimplifierResult tc m →  SimplifierResult tc m
+          convert (n , Qr , solved .Qr θ) = convert′ ( constraint {r₂}{tc}{n} eq (applySubst θ b))
+            where convert′ :  SimplifierResult tc n →  SimplifierResult tc m
+                  convert′ (n′ , Qr′ , solved .Qr′ θ′) = n′ , Qr′ special-∧ applySubst′ θ′ Qr , solved _ (θ′ >=> θ)
+
+
+  
+  simplifier : {x : Set} → Eq x → (n : ℕ) → AxiomScheme x → SConstraint x 
+                         → SConstraint (x ⨁ n) → SimplifierResult x n
+  simplifier {x} eq n ax con₁ con₂ with shapify con₂
+  ... | r , v = constraint {r}{x}{n} eq v
+
+  postulate simplifier-sound : {x : Set} {n : ℕ} {eq : Eq x} (Q : AxiomScheme x) (Qg : SConstraint x) (Qw : SConstraint (x ⨁ n)) 
+                             → IsSound Q Qg Qw (simplifier eq n Q Qg Qw)
+
+  simplification : Simplification
+  simplification = record {simplifier = simplifier; simplifier-sound = λ {x}{n}{eq} → simplifier-sound {x}{n}{eq} }
 
   Simple : (ℕ → Set) → X
   Simple dc = record { dc = dc
-                     ; Type = Type
-                     ; QConstraint = SConstraint
-                     ; type-is-monad = type-is-monad
-                     ; qconstraint-is-functor = sconstraint-is-functor
-                     ; constraint-types = constraint-types
-                     ; funType = _⟶_; appType = _·_
-                     ; _∼_ = _∼_; _∧_ = _∧′_; ε = ε; is-ε = is-ε
-                     ; simplifier = simplifier
-                     ; AxiomScheme = AxiomScheme
-                     ; axiomscheme-types = λ f → coerceAxioms
-                     ; axiomscheme-is-functor = record { map = λ f → coerceAxioms; identity = λ f → coerceId; composite = λ { {x = ax} → refl }}
-                     ; _,_⊩_ = _,_⊩_ 
-                     ; ent-refl = ent-refl 
-                     ; ent-trans = ent-trans 
-                     ; ent-subst = ent-subst 
-                     ; ent-typeq-refl = ent-typeq-refl 
-                     ; ent-typeq-sym = ent-typeq-sym 
-                     ; ent-typeq-trans = ent-typeq-trans 
-                     ; ent-typeq-subst = ent-typeq-subst
-                     ; ent-conj = ent-conj 
+                     ; types = types
+                     ; axiom-schemes = axiom-schemes
+                     ; qconstraints = qconstraints
+                     ; entailment = entailment
+                     ; simplification = simplification
                      }
 
 

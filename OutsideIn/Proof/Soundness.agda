@@ -5,13 +5,16 @@ module OutsideIn.Proof.Soundness(x : X) where
   import OutsideIn.Environments as EV
   import OutsideIn.Expressions as E
   import OutsideIn.TypeSchema as TS
+  import OutsideIn.TopLevel as TL
   open EV(x)
   open E(x)
   open TS(x)
+  open TL(x)
   
 
   module Ax-f = Functor(axiomscheme-is-functor)
   module QC-f = Functor(qconstraint-is-functor)
+  module Exp-f {r}{s} = Functor(expression-is-functor₂ {r}{s})
   module TS-f {n} = Functor(type-schema-is-functor {n})
   module pn-m {n} = Monad(PlusN-is-monad{n})
 
@@ -72,3 +75,21 @@ module OutsideIn.Proof.Soundness(x : X) where
          → Q , Qg ⊩ constraint-substitute θ Qv       
          → Q , Qg , Γ ⊢ (Var {_}{_}{Datacon l} v) ∶ type-substitute θ (map (pn-m.unit {b}) (applyAll a (unit K)))
     -- CASE
+
+  data _,_,_⊢′_ {ev tv : Set}(Q : AxiomScheme tv)(Qg : QConstraint tv)(Γ : Environment ev tv):  Program ev tv → Set where
+    Empty : Q , Qg , Γ ⊢′ end
+    Bind1 : {r : Shape}{n : ℕ}{e : Expression ev tv r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
+          → let Q′  = Ax-f.map (pn-m.unit {n}) Q 
+                Qg′ = QC-f.map (pn-m.unit {n}) Qg 
+                e′  = Exp-f.map (pn-m.unit {n}) e 
+         in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
+          → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e′ ∶ τ
+          → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ  ⟩, Γ) ⊢′ p
+          → Q , Qg , Γ ⊢′ bind₁ e , p 
+    Bind2 : {r : Shape}{n : ℕ}{e : Expression ev (tv ⨁ n) r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
+          → let Q′  = Ax-f.map (pn-m.unit {n}) Q 
+                Qg′ = QC-f.map (pn-m.unit {n}) Qg 
+         in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
+          → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e ∶ τ 
+          → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ ⟩, Γ) ⊢′ p 
+          → Q , Qg , Γ ⊢′ bind₂ n · e ∷ Qv ⇒ τ , p     

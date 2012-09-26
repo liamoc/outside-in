@@ -1,6 +1,7 @@
 open import OutsideIn.Prelude
 open import OutsideIn.X
 module OutsideIn.Environments(x : X) where
+  open import Data.Vec hiding (map)
   import OutsideIn.TypeSchema as TS
   import OutsideIn.Expressions as E
   open TS(x)
@@ -23,3 +24,7 @@ module OutsideIn.Environments(x : X) where
   _↑Γ : {ev tv : Set} → Environment ev tv → Environment ev (Ⓢ tv)
   Γ ↑Γ = TS-f.map suc ∘ Γ
 
+
+  addAll : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
+  addAll [] Γ = Γ 
+  addAll (τ ∷ τs) Γ = addAll τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ ) 

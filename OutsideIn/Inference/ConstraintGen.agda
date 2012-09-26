@@ -76,7 +76,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
           Γ′ [] Γ = Γ 
           Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
-  ... |  DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (Γ′ (Vec-f.map (_↑t) τs) Γ↑) e↑ δ
+  ... |  DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (addAll (Vec-f.map (_↑t) τs) Γ↑) e↑ δ
                                                   in (Imp (∃ 1 · Q ⊃ (C ∧′ δ ∼′ β↑))) ∧′ Tγ ∼′ α↑ 
     where module pa = PlusN-m a
           module pb = PlusN-m b
@@ -94,9 +94,6 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           Γ↑ = (TypeSchema-f.map (pb.unit ∘ pa.unit) ∘ Γ) ↑Γ
           δ : Type tv′
           δ = TVar (zero)
-          Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
-          Γ′ [] Γ = Γ 
-          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ ) 
    
   genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}
                               (Γ : Environment ev tv)(e : Alternatives ev tv r)(α β : Type tv) 

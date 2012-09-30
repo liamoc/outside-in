@@ -1,7 +1,7 @@
 module OutsideIn.Prelude where
 
   open import Data.Nat public
-  open import Relation.Binary.PropositionalEquality public
+  open import Relation.Binary.PropositionalEquality public renaming ([_] to iC)
   open import Relation.Nullary public
   open import Function public hiding (case_of_) 
 

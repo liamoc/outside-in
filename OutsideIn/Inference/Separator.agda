@@ -14,24 +14,33 @@ module OutsideIn.Inference.Separator(x : X) where
       imp : ∀ {s} → Implication (λ n → SeparatedConstraint n s) n → Implications n (Unary s)
       _imp-∧_ : ∀ {s₁ s₂} →  Implications n s₁ → Implications n s₂ →  Implications n (Binary s₁ s₂)
 
-  simpl : ∀ {n} → Constraint n Flat → QConstraint n
-  simpl (QC c) = c
-  simpl (a ∧′ b) = (simpl a) ∧ (simpl b)
-  simpl (Imp _) = ε
+  mutual
+    data _simpl:_ {n : Set} : Constraint n Flat → QConstraint n → Set where
+       Simpl-QC : ∀ {c} → QC c simpl: c
+       Simpl-∧  : ∀ {a b}{a′ b′} → a simpl: a′ → b simpl: b′ → (a ∧′ b) simpl: (a′ ∧ b′)
+       Simpl-Imp : ∀ {i} → Imp i simpl: ε
+    data _separate:_,_ {n : Set} : Constraint n Flat → (r : Shape) → SeparatedConstraint n r → Set where
+       Separate : ∀ {C}{Q}{r}{I} → C simpl: Q → C implic: r , I → C separate: r , SC Q I
+    data _implic:_,_ {n : Set} : Constraint n Flat → (r : Shape) → Implications n r → Set where
+       Implic-Qc : ∀ {c} → QC c implic: Nullary , imp-ε
+       Implic-∧ : ∀{a b}{r₁ r₂}{a′}{b′} → a implic: r₁ , a′ → b implic: r₂ , b′ → (a ∧′ b) implic: Binary r₁ r₂ , (a′ imp-∧ b′)
+       Implic-I : ∀{n}{Q}{C}{s}{v} → C separate: s , v → Imp (∃ n · Q ⊃ C) implic: Unary s , imp (∃ n · Q ⊃ v)
+  
+  simpl : ∀ {n} → (C : Constraint n Flat) → ∃ (λ Q → C simpl: Q)
+  simpl (QC c) = _ , Simpl-QC
+  simpl (a ∧′ b) with simpl a | simpl b
+  ... | q₁ , p₁ | q₂ , p₂ = _ , Simpl-∧ p₁ p₂
+  simpl (Imp _) = _ , Simpl-Imp 
 
-  separate : ∀ {n} → Constraint n Flat → ∃ (SeparatedConstraint n)
-  implic : ∀ {n} → Constraint n Flat → ∃ (Implications n)
-  implic (QC c) = Nullary , imp-ε
+  separate : ∀ {n} → (C : Constraint n Flat) → ∃ (λ r → ∃ (λ S → C separate: r , S))
+  implic : ∀ {n} → (C : Constraint n Flat) → ∃ (λ r → ∃ (λ I →  C implic: r , I ))
+  separate c with implic c | simpl c
+  ... | s , v , p | q , p′ = _ , _ , Separate p′ p
+  implic (QC c) = _ , _ , Implic-Qc 
   implic (a ∧′ b) with implic a | implic b
-  ... | s₁ , v₁ | s₂ , v₂  = Binary s₁ s₂ , (v₁ imp-∧ v₂)
+  ... | s , v , p | s′ , v′ , p′ = _ , _ , Implic-∧ p p′
   implic (Imp (∃ n · Q ⊃ C)) with separate C
-  ... | s , v = Unary s , imp (∃ n · Q ⊃ v) 
-  separate c with implic c 
-  ... | s , v = s , SC (simpl c) v
-
-
-
-
+  ... | s , v , p = _ , _ , Implic-I p
 
   -- Substitution for separated constraints
   substituteSep : ∀ {s}{a b} → (a → Type b) → SeparatedConstraint a s → SeparatedConstraint b s

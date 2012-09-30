@@ -58,120 +58,136 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
     funType [] t = t
     funType (x ∷ xs) t = x ⟶ (funType xs t) 
 
+    upType : ∀ {n}{tv} → Type tv → Type (tv ⨁ n)
+    upType {n} t = Type-f.map (Monad.unit (PlusN-is-monad {n})) t 
+    upGamma : ∀ {n}{ev}{tv} → Environment ev tv → Environment ev (tv ⨁ n)
+    upGamma {n} Γ = TypeSchema-f.map (Monad.unit (PlusN-is-monad {n})) ∘ Γ 
+    upExp : ∀ {n}{ev}{tv}{r} → Expression ev tv r → Expression ev (tv ⨁ n) r
+    upExp {n} e = Exp-f₂.map (Monad.unit (PlusN-is-monad {n})) e
+    upAlts : ∀ {n}{ev}{tv}{r} → Alternatives ev tv r → Alternatives ev (tv ⨁ n) r
+    upAlts {n} e = Functor.map alternatives-is-functor₂ (Monad.unit (PlusN-is-monad {n})) e
+
+  mutual
+
+    syntax alternativeConstraintGen Γ α₀ α₁ alt C = Γ ►′ alt ∶ α₀ ⟶ α₁ ↝ C
+    data alternativeConstraintGen {ev : Set}{tv : Set}(Γ : Environment ev tv)(α₀ α₁ : Type tv) : 
+                                   {r : Shape} → Alternative ev tv r → Constraint tv Extended → Set where
+      Simple : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{τs}{T}{C}             
+             → let δ = TVar zero
+            in Γ v ≡ DC∀ a · τs ⟶ T
+             → addAll (Vec-f.map (_↑t) τs) (upGamma {a} Γ ↑Γ) ► (upExp {a} e ↑e) ∶ δ ↝ C 
+             → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · (Ⅎ δ ∼′ (upType {a} α₁ ↑t) ∧′ C) ∧′ applyAll a (TVar T) ∼′ upType {a} α₀
+      GADT : ∀ {r}{n}{v : Name ev (Datacon n)}{e : Expression _ _ r}{a}{b}{Q}{τs}{T}{C}             
+           → let δ = TVar zero
+          in Γ v ≡ DC∀′ a , b · Q ⇒ τs ⟶ T
+           →   addAll (Vec-f.map (_↑t) τs) (upGamma {b} (upGamma {a} Γ) ↑Γ) 
+             ► (upExp {b} (upExp {a} e) ↑e) ∶ δ ↝ C 
+           → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · Ⅎ′ b · (Imp (∃ 1 · Q ⊃ (C ∧′ δ ∼′ (upType {b} (upType {a} α₁) ↑t)))) 
+                                                  ∧′ upType {b} (upType {a} α₀) ∼′ Type-f.map (PlusN-m.unit b) (applyAll a (TVar T))
+      
+    syntax alternativesConstraintGen Γ α₀ α₁ alts C = Γ ►► alts ∶ α₀ ⟶ α₁ ↝ C
+    data alternativesConstraintGen {ev : Set}{tv : Set}(Γ : Environment ev tv)(α₀ α₁ : Type tv) : 
+                                   {r : Shape} → Alternatives ev tv r → Constraint tv Extended → Set where
+      NoAlternative : Γ ►► esac ∶ α₀ ⟶ α₁ ↝ ε′ 
+      AnAlternative : ∀ {r₁ r₂}{a : Alternative _ _ r₁}{as : Alternatives _ _ r₂}{C₁}{C₂} 
+                    → Γ ►′ a      ∶ α₀ ⟶ α₁ ↝ C₁
+                    → Γ ►► as     ∶ α₀ ⟶ α₁ ↝ C₂ 
+                    → Γ ►► a ∣ as ∶ α₀ ⟶ α₁ ↝ C₂  
+
+    syntax constraintGen a c b d = a ► b ∶ c ↝ d
+    data constraintGen {ev : Set}{tv : Set}
+                       (Γ : Environment ev tv)(τ : Type tv) : {r : Shape} → 
+                       Expression ev tv r → Constraint tv Extended → Set where
+      VarCon₁ : ∀ {v}{n}{q}{t} 
+              → Γ (N v) ≡ ∀′ n · q ⇒ t 
+              → Γ ► Var (N v) ∶ τ ↝ Ⅎ′ n · QC q ∧′ upType {n} τ ∼′ t
+      VarCon₂ : ∀ {n}{d}{a}{τs : Vec _ n}{k}
+              → Γ (DC d) ≡ DC∀ a · τs ⟶ k
+              → Γ ► Var (DC d) ∶ τ ↝ Ⅎ′ a · upType {a} τ ∼′ funType τs (applyAll a (TVar k))
+      VarCon₃ : ∀ {n}{d}{a}{b}{Q}{τs : Vec _ n}{k}
+              → Γ (DC d) ≡ DC∀′ a , b · Q ⇒ τs ⟶ k
+              → Γ ► Var (DC d) ∶ τ ↝ Ⅎ′ a · Ⅎ′ b ·
+                                       QC Q ∧′ upType {b} (upType {a} τ) ∼′ funType τs (upType {b} (applyAll a (TVar k)))  
+      App     : ∀ {r₁}{r₂}{e₁ : Expression _ _ r₁}{e₂ : Expression _ _ r₂}{C₁}{C₂}
+              → let α₀ = TVar zero
+                    α₁ = TVar (suc zero)
+                    α₂ = TVar (suc (suc zero))
+                 in upGamma {3} Γ ► upExp {3} e₁ ∶ α₀ ↝ C₁
+                  → upGamma {3} Γ ► upExp {3} e₂ ∶ α₁ ↝ C₂
+                  → Γ ► e₁ · e₂ ∶ τ ↝ Ⅎ Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ α₀ ∼′ (α₁ ⟶ α₂) ∧′ upType {3} τ ∼′ α₂
+      Abs :  ∀ {r}{e : Expression _ _ r}{C}
+              → let α₀ = TVar zero
+                    α₁ = TVar (suc zero)
+                 in ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, upGamma {2} Γ ► upExp {2} e ∶ α₁ ↝ C
+                  → Γ ► λ′ e ∶ τ ↝ Ⅎ Ⅎ C ∧′ upType {2} τ ∼′ (α₀ ⟶ α₁)
+      Let : ∀{r₁}{r₂}{x : Expression _ _ r₁}{y : Expression _ _ r₂}{C₁}{C₂}
+          → let α₀ = TVar zero
+                α₁ = TVar (suc zero)
+             in                    upGamma {2} Γ ► upExp {2} x ∶ α₀ ↝ C₁ 
+              → ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, upGamma {2} Γ ► upExp {2} y ∶ α₁ ↝ C₂
+              → Γ ► let₁ x in′ y ∶ τ ↝ Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ upType {2} τ ∼′ α₁
+      LetA : ∀{r₁}{r₂}{x : Expression _ _ r₁}{y : Expression _ _ r₂}{t}{C₁}{C₂}
+           → let α₀ = TVar zero
+                 α₁ = TVar (suc zero)
+              in                    upGamma {2} Γ ► upExp {2} x ∶ α₀ ↝ C₁ 
+               → ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, upGamma {2} Γ ► upExp {2} y ∶ α₁ ↝ C₂
+               → Γ ► let₂ x ∷ t in′ y ∶ τ ↝ Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ upType {2} τ ∼′ α₁ ∧′ upType {2} t ∼′ α₀
+      GLetA : ∀{n}{r₁}{r₂}{x : Expression _ _ r₁}{y : Expression _ _ r₂}{Q}{t}{C}{C₂}
+           → let α₀ = upType {n} (TVar zero)
+                 α₁ = upType {n} (TVar (suc zero))
+                 up2 = PlusN-f.map n (PlusN-m.unit 2)
+              in                     upGamma {n} (upGamma {2} Γ) ► Exp-f₂.map up2 x ∶ α₀ ↝ C              
+               → upGamma {n} (upGamma {2} (⟨ ∀′ n · Q ⇒ t ⟩, Γ)) ► upExp {n} (upExp {2} y) ∶ α₁ ↝ C₂
+               → Γ ► let₃ n · x ∷ Q ⇒ t in′ y ∶ τ ↝ Ⅎ Ⅎ Ⅎ′ n · Imp (∃ 0 · QC-f.map up2 Q ⊃ (C ∧′ α₀ ∼′ Type-f.map up2 t)) 
+                                                            ∧′ C₂ ∧′ upType {n} (upType {2} τ) ∼′ α₁
+      Case : ∀{r₁}{r₂}{x : Expression _ _ r₁}{alts : Alternatives _ _ r₂}{C₁}{C₂}
+           → let α₀ = TVar zero
+                 α₁ = TVar (suc zero)
+              in upGamma {2} Γ ► upExp {2} x ∶ α₀ ↝ C₁
+               → upGamma {2} Γ ►► upAlts {2} alts ∶ α₀ ⟶ α₁ ↝ C₂ 
+               → Γ ► case x of alts ∶ τ ↝ Ⅎ Ⅎ C₁ ∧′ C₂ 
+
+
   genConstraint : {ev : Set}{tv : Set}{r : Shape}
-                  (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv) 
-                → Constraint tv Extended
-  genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape}
-                             (Γ : Environment ev tv)(e : Alternative ev tv r)(α β : Type tv) 
-                           → Constraint tv Extended
-  genConstraintAlternative {ev}{tv} Γ (v →′ e) α β with Γ v
-  ... | DC∀ a · τs ⟶ T =  Ⅎ′ a · let C  = genConstraint (Γ′ (Vec-f.map (_↑t) τs) Γ↑) ((Exp-f₂.map (pa.unit) e) ↑e) δ
-                                  in (Ⅎ  ((δ ∼′ ((Type-f.map (pa.unit) β) ↑t)) ∧′ C)) ∧′ (applyAll a (TVar T)) ∼′ (Type-f.map (pa.unit) α) 
-    where module pa = PlusN-m a
-          tv′ = Ⓢ (tv ⨁ a)
-          Γ↑ : ∀ {x} → Name ev x → TypeSchema tv′ x
-          Γ↑ = (TypeSchema-f.map (pa.unit) ∘ Γ) ↑Γ
-          δ : Type tv′
-          δ = TVar (zero)
-          Γ′ : ∀{n}{ev}{tv} → Vec (Type tv) n → ( Environment ev tv) → Environment (ev ⨁ n) tv
-          Γ′ [] Γ = Γ 
-          Γ′ (τ ∷ τs) Γ = Γ′ τs (⟨ ∀′ 0 · ε ⇒ τ ⟩, Γ )
-  ... |  DC∀′ a , b · Q ⇒ τs ⟶ T = Ⅎ′ a · Ⅎ′ b · let C  = genConstraint (addAll (Vec-f.map (_↑t) τs) Γ↑) e↑ δ
-                                                  in (Imp (∃ 1 · Q ⊃ (C ∧′ δ ∼′ β↑))) ∧′ Tγ ∼′ α↑ 
-    where module pa = PlusN-m a
-          module pb = PlusN-m b
-          tv′ = Ⓢ ((tv ⨁ a) ⨁ b)             
-          Tγ : Type ((tv ⨁ a) ⨁ b)
-          Tγ = (Type-f.map pb.unit (applyAll a (TVar T)))
-          
-          β↑ : Type tv′
-          β↑ = (Type-f.map (pb.unit ∘ pa.unit) β) ↑t
-          α↑ : Type ((tv ⨁ a) ⨁ b)             
-          α↑ = (Type-f.map (pb.unit ∘ pa.unit) α)
-          e↑ : Expression _ tv′ _
-          e↑ = (Exp-f₂.map (pb.unit ∘ pa.unit) e) ↑e
-          Γ↑ : ∀ {x} → Name ev x → TypeSchema tv′ x
-          Γ↑ = (TypeSchema-f.map (pb.unit ∘ pa.unit) ∘ Γ) ↑Γ
-          δ : Type tv′
-          δ = TVar (zero)
-   
-  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape}
-                              (Γ : Environment ev tv)(e : Alternatives ev tv r)(α β : Type tv) 
-                            → Constraint tv Extended
-  genConstraintAlternatives Γ (esac) α β = ε′
-  genConstraintAlternatives Γ (a ∣ as) α β = genConstraintAlternative  Γ a  α β 
-                                          ∧′ genConstraintAlternatives Γ as α β
-  genConstraint {tv = tv} Γ (Var (DC d)) τ with Γ (DC d)
-  ... | DC∀ a · τs ⟶ k = let τ′ = funType τs (applyAll a (TVar k)) 
-                           in Ⅎ′ a · Type-f.map (pa.unit) τ ∼′ τ′
-   where module pa = PlusN-m a
-  ... | DC∀′ a , b · q ⇒ τs ⟶ k = let τ′ = funType τs (Type-f.map (pb.unit) (applyAll a (TVar k))) 
-                                    in Ⅎ′ a · Ⅎ′ b · QC q ∧′ Type-f.map (pb.unit ∘ pa.unit) τ ∼′ τ′
-   where module pa = PlusN-m a
-         module pb = PlusN-m b
-
-  genConstraint Γ (Var (N v)) τ with Γ (N v)
-  ... | ∀′ n · q ⇒ t = Ⅎ′ n · QC q ∧′ Type-f.map pn.unit τ ∼′ t
-   where module pn = PlusN-m n
-
-  genConstraint Γ (e₁ · e₂) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ ↑Γ) (e₁ ↑e ↑e ↑e) α₀ 
-                                    C₂ = genConstraint (Γ ↑Γ ↑Γ ↑Γ) (e₂ ↑e ↑e ↑e) α₁
-                                 in Ⅎ Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ α₀ ∼′ (α₁ ⟶ α₂) ∧′ (τ ↑t ↑t ↑t) ∼′ α₂
-    where α₀ = TVar (zero)
-          α₁ = TVar (suc zero)
-          α₂ = TVar (suc (suc zero))
-  genConstraint {ev}{tv} Γ (λ′ e′) τ = let C = genConstraint Γ′ (e′ ↑e ↑e) α₁ 
-                                        in Ⅎ Ⅎ C ∧′ (τ ↑t ↑t) ∼′ (α₀ ⟶ α₁)
-    where α₀ = TVar (zero)
-          α₁ = TVar (suc zero)
-          Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
-  genConstraint {ev}{tv} Γ (let₁ x in′ y) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀ 
-                                                  C₂ = genConstraint Γ′ (y ↑e ↑e) α₁
-                                               in Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼′ α₁
-    where α₀ = TVar (zero)
-          α₁ = TVar (suc zero)
-          Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
-  genConstraint {ev}{tv} Γ (let₂ x ∷ t in′ y) τ = let C₁ = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀
-                                                      C₂ = genConstraint Γ′ (y ↑e ↑e) α₁
-                                                   in Ⅎ Ⅎ C₁ ∧′ C₂ ∧′ (τ ↑t ↑t) ∼′ α₁ ∧′ 
-                                                          α₀ ∼′ (t ↑t ↑t)
-    where α₀ = TVar zero
-          α₁ = TVar (suc zero)
-          Γ′ : Environment (Ⓢ ev) (tv ⨁ 2)
-          Γ′ = ⟨ ∀′ 0 · ε ⇒ α₀ ⟩, Γ ↑Γ ↑Γ
-  genConstraint {ev}{tv} Γ (let₃ n · x ∷ Q ⇒ t in′ y) τ = let 
-                                                            C  = genConstraint ((Γ ↑Γ ↑Γ) ↑nΓ) x′ α₀
-                                                            C₂ = genConstraint Γ′ ((y ↑e ↑e) ↑ne) α₁
-                                                            C₁ = Imp (∃ 0 · Q′ ⊃ (C ∧′ α₀ ∼′ t′))
-                                                          in Ⅎ Ⅎ Ⅎ′ n · C₁ ∧′ C₂ ∧′ 
-                                                                        ((τ ↑t ↑t) ↑nt) ∼′ α₁
-    where module p2m = PlusN-m 2
-          module p2f = PlusN-f 2
-          module pnf = PlusN-f n
-          module pnm = PlusN-m n
-          _↑nΓ : {x : NameType} {ev tv : Set} 
-               → (Name ev x → TypeSchema tv x) → (Name ev x → TypeSchema (tv ⨁ n) x)
-          _↑nΓ = _∘_ (TypeSchema-f.map pnm.unit)
-          _↑ne = Exp-f₂.map pnm.unit
-          _↑nt = Type-f.map pnm.unit
-          Q′ = (QC-f.map (pnf.map p2m.unit) Q)
-          t′ = Type-f.map (pnf.map p2m.unit) t
-          x′ = Exp-f₂.map (pnf.map p2m.unit) x
-          α₀ : Type ((tv ⨁ 2) ⨁ n)
-          α₀ = Type-f.map pnm.unit (TVar zero)
-          α₁ : Type ((tv ⨁ 2) ⨁ n)
-          α₁ = Type-f.map pnm.unit (TVar (suc zero))
-          Γ′ : Environment (Ⓢ ev) ((tv ⨁ 2) ⨁ n)
-          Γ′ = TypeSchema-f.map (pnm.unit ∘ p2m.unit) ∘  ⟨ ∀′ n · Q ⇒  t ⟩, Γ
-  genConstraint {ev}{tv} Γ (case x of alts)  τ = let C = genConstraint (Γ ↑Γ ↑Γ) (x ↑e ↑e) α₀ 
-                                                  in Ⅎ Ⅎ (C ∧′ α₁ ∼′ (τ ↑t ↑t) 
-                                                       ∧′ genConstraintAlternatives (Γ ↑Γ ↑Γ) 
-                                                                                    (alts ↑a ↑a) 
-                                                                                    α₀ α₁)
-       where α₀ : Type (tv ⨁ 2)
-             α₀ = TVar zero
-             α₁ : Type (tv ⨁ 2)
-             α₁ = TVar (suc zero)
-
+                  (Γ : Environment ev tv)(e : Expression ev tv r)(τ : Type tv) → ∃ (λ C → Γ ► e ∶ τ ↝ C)
+  genConstraintAlternative : {ev : Set}{tv : Set}{r : Shape} (Γ : Environment ev tv)(a : Alternative ev tv r)(α₀ α₁ : Type tv)
+                           → ∃ (λ C → Γ ►′ a ∶ α₀ ⟶ α₁ ↝ C)
+  genConstraintAlternative Γ (n →′ e) α₀ α₁ with Γ n | inspect Γ n 
+  ... | DC∀ a · τs ⟶ k | iC p with genConstraint (addAll (Vec-f.map _↑t τs) (upGamma {a} Γ ↑Γ)) (upExp {a} e ↑e) (TVar zero)
+  ...                          | C , p₂ = _ , Simple p p₂
+  genConstraintAlternative Γ (n →′ e) α₀ α₁ 
+      | DC∀′ a , b · Q ⇒ τs ⟶ k | iC p with genConstraint (addAll (Vec-f.map _↑t τs) (upGamma {b} (upGamma {a} Γ) ↑Γ)) 
+                                                           (upExp {b} (upExp {a} e) ↑e) 
+                                                           (TVar zero) 
+  ...                                   | C , p₂ = _ , GADT p p₂
+  genConstraintAlternatives : {ev : Set}{tv : Set}{r : Shape} (Γ : Environment ev tv)(a : Alternatives ev tv r)(α₀ α₁ : Type tv)
+                            → ∃ (λ C → Γ ►► a ∶ α₀ ⟶ α₁ ↝ C)
+  genConstraintAlternatives Γ esac α₀ α₁ = _ , NoAlternative
+  genConstraintAlternatives Γ (a ∣ as) α₀ α₁ with genConstraintAlternative Γ a α₀ α₁ | genConstraintAlternatives Γ as α₀ α₁ 
+  ... | C₁ , p₁ | C₂ , p₂ = _ , AnAlternative p₁ p₂
+  genConstraint  Γ (Var (N v)) τ with Γ (N v) | inspect Γ (N v)
+  ... | ∀′ n · q ⇒ t | iC prf = _ , VarCon₁ prf 
+  genConstraint  Γ (Var (DC d)) τ with Γ (DC d) | inspect Γ (DC d)
+  ... | DC∀  a · τs ⟶ k         | iC prf = _ , VarCon₂ prf 
+  ... | DC∀′ a , b · q ⇒ τs ⟶ k | iC prf = _ , VarCon₃ prf 
+  genConstraint Γ (e₁ · e₂) τ with genConstraint (upGamma {3} Γ) (upExp {3} e₁) (TVar zero) 
+                                 | genConstraint (upGamma {3} Γ) (upExp {3} e₂) (TVar (suc zero))
+  ... | C₁ , p₁ | C₂ , p₂ = _ , App p₁ p₂
+  genConstraint Γ (λ′ e′) τ with genConstraint (⟨ ∀′ 0 · ε ⇒ TVar zero ⟩, upGamma {2} Γ) (upExp {2} e′) (TVar (suc zero)) 
+  ... | C , p = _ , Abs p
+  genConstraint  Γ (let₁ x in′ y) τ with genConstraint (upGamma {2} Γ) (upExp {2} x) (TVar zero) 
+                                       | genConstraint (⟨ ∀′ 0 · ε ⇒ TVar zero ⟩, upGamma {2} Γ) (upExp {2} y) (TVar (suc zero)) 
+  ... | C₁ , p₁ | C₂ , p₂ = _ , Let p₁ p₂
+  genConstraint Γ (let₂ x ∷ t in′ y) τ with genConstraint (upGamma {2} Γ) (upExp {2} x) (TVar zero) 
+                                       | genConstraint (⟨ ∀′ 0 · ε ⇒ TVar zero ⟩, upGamma {2} Γ) (upExp {2} y) (TVar (suc zero)) 
+  ... | C₁ , p₁ | C₂ , p₂ = _ , LetA p₁ p₂
+  genConstraint Γ (let₃ n · x ∷ Q ⇒ t in′ y) τ with genConstraint (upGamma {n} (upGamma {2} Γ)) 
+                                                                  (Exp-f₂.map (PlusN-f.map n (PlusN-m.unit 2)) x) 
+                                                                  (upType {n} (TVar zero)) 
+                                                  | genConstraint (upGamma {n} (upGamma {2} (⟨ ∀′ n · Q ⇒ t ⟩, Γ)))
+                                                                  (upExp {n} (upExp {2} y))
+                                                                  (upType {n} (TVar (suc zero)))   
+  ... | C₁ , p₁ | C₂ , p₂ = _ , GLetA p₁ p₂
+  genConstraint Γ (case x of alts) τ with genConstraint (upGamma {2} Γ) (upExp {2} x) (TVar zero) 
+                                        | genConstraintAlternatives (upGamma {2} Γ) (upAlts {2} alts) (TVar zero) (TVar (suc zero))
+  ... | C₁ , p₁ | C₂ , p₂ = _ , Case p₁ p₂ 

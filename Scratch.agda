@@ -95,5 +95,4 @@ module Scratch where
 
   test = go ax Γ (λ a b → true) p
   test2 = go ax Γ (λ a b → true) p2 
-  test′ = generate′ Γ e2 
   

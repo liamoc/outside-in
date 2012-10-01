@@ -8,12 +8,23 @@ module OutsideIn.Proof.Soundness(x : X) where
   import OutsideIn.Expressions as E
   import OutsideIn.TypeSchema as TS
   import OutsideIn.TopLevel as TL
+  import OutsideIn.Constraints as CN
+  import OutsideIn.Inference as I
+  import OutsideIn.Inference.Separator as S
+  import OutsideIn.Inference.Prenexer as P
+  import OutsideIn.Inference.ConstraintGen as CG
+  import OutsideIn.Inference.Solver as SL
   open EV(x)
   open E(x)
+  open CN(x)
   open TS(x)
   open TL(x)
-  
-
+  open I(x)
+  open CG(x)
+  open S(x)
+  open SL(x)
+  open P(x)
+  open import Relation.Binary.PropositionalEquality renaming ([_] to inspectC)
   module Ax-f = Functor(axiomscheme-is-functor)
   module QC-f = Functor(qconstraint-is-functor)
   module Exp-f {r}{s} = Functor(expression-is-functor₂ {r}{s})
@@ -105,7 +116,7 @@ module OutsideIn.Proof.Soundness(x : X) where
 
   data _,_,_⊢′_ {ev tv : Set}(Q : AxiomScheme tv)(Qg : QConstraint tv)(Γ : Environment ev tv):  Program ev tv → Set where
     Empty : Q , Qg , Γ ⊢′ end
-    Bind1 : {r : Shape}{n : ℕ}{e : Expression ev tv r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
+    Bind : {r : Shape}{n : ℕ}{e : Expression ev tv r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
           → let Q′  = Ax-f.map (pn-m.unit {n}) Q 
                 Qg′ = QC-f.map (pn-m.unit {n}) Qg 
                 e′  = Exp-f.map (pn-m.unit {n}) e 
@@ -113,10 +124,48 @@ module OutsideIn.Proof.Soundness(x : X) where
           → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e′ ∶ τ
           → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ  ⟩, Γ) ⊢′ p
           → Q , Qg , Γ ⊢′ bind₁ e , p 
-    Bind2 : {r : Shape}{n : ℕ}{e : Expression ev (tv ⨁ n) r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
+    BindA : {r : Shape}{n : ℕ}{e : Expression ev (tv ⨁ n) r}{p : Program (Ⓢ ev) tv}{Qv Q₁ : QConstraint (tv ⨁ n)}{τ : Type (tv ⨁ n)}
           → let Q′  = Ax-f.map (pn-m.unit {n}) Q 
                 Qg′ = QC-f.map (pn-m.unit {n}) Qg 
          in Q′ , Qv ∧ Qg′ ⊩ Q₁ 
           → Q′ , Q₁ , (TS-f.map (pn-m.unit {n}) ∘ Γ) ⊢ e ∶ τ 
           → Q , Qg , (⟨ ∀′ n · Qv ⇒ τ ⟩, Γ) ⊢′ p 
           → Q , Qg , Γ ⊢′ bind₂ n · e ∷ Qv ⇒ τ , p     
+
+  open import Data.Empty
+
+
+
+
+  -- I know that Γ (N v) == ∀′ α · q₁ ⇒ τ₁
+  -- I know that gen≡ 
+
+
+
+  soundness-lemma : ∀{r}{n}{ev}{tv}{Γ : Environment ev tv}{e : Expression ev tv r}{r′}{τ}{C}{C′}{C′′}{n′}{Q}{Qg}{Qr}{θ}{eq : Eq (tv ⨁ n)}{Cext}
+                  → Γ ► e ∶ τ ↝ C → C prenex: n , C′ → C′ separate: r′ , C′′ →  Q , Qg , n solv► C′′ ↝ n′ , Qr , θ
+                  →  let Q′  = Ax-f.map (pn-m.unit {n′}) Q 
+                         Qg′ = QC-f.map (pn-m.unit {n′}) Qg 
+                         e′  = Exp-f.map (pn-m.unit {n′}) e 
+                      in ∃ (λ Qe → (Q′ , Qe , TS-f.map (pn-m.unit {n′}) ∘ Γ ⊢ e′ ∶ map (pn-m.unit {n′}) τ) 
+                            × Q′ , (Qg′ ∧ Qr) ⊩ Qe  )  
+{-  soundness-lemma (VarCon₁ Γv≡∀n·q⇒t) pnx sep sol = {!_ , VarN ? ? ? , ?!} -}
+{-  soundness-lemma (App {C₁ = C₁}{C₂} Pe₁ Pe₂) pnx sep sol with prenex (C₁ ∧′ C₂) | prenex (C₂ ∧′ C₁)
+  ... | f₁ , C₁′  , p₁  | f₂ , C₂′  , p₂  with separate C₁′ | separate C₂′
+  ... | r₁ , C₁′′ , p₁′ | r₂ , C₂′′ , p₂′ with soundness-lemma Pe₁ p₁ p₁′ {!!} | soundness-lemma Pe₂ p₂ p₂′ {!!} 
+  ... | Q₁ , P₁   , P₁′ | Q₂ , P₂ , P₂′  = Q₁ ∧ (Q₂ ∧ {!!}) , Appl P₁ P₂ , {!!}  -}
+  soundness-lemma {n = suc (suc .(na + nb))} {e = λ′ e′} {τ = τ}
+                  (Abs {C = Ⅎ Ⅎ (C ∧′ rest)} p)  
+                  (PN-Ext (PN-Ext (PN-∧ {._}{._}{na}{nb} p₁ p₂))) 
+                  (Separate (Simpl-∧ p₁s p₂s) (Implic-∧ p₁i p₂i)) (SOLVE simpl impls) with soundness-lemma {e = Exp-f.map (suc ∘ suc) e′} p p₁ (Separate {!p₁s!} {!!}) {!!}
+  ... | Q₁ , t , e = {!!}
+  soundness-lemma (_) pnx sep sol = {!!}
+
+
+{-
+  soundness-proof : ∀ {ev}{tv}{eq : Eq tv}{Q}{Γ : Environment ev tv}{p} → Q , Γ ► p →  Q , ε , Γ ⊢′ p 
+  soundness-proof (Empty) = Empty
+  soundness-proof (Bind _ _ _ _ _) = Bind {!!} {!!} {!!} 
+  soundness-proof (BindA _ _ _ _ _) = BindA {!!} {!!} {!!}
+-}
+

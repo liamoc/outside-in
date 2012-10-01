@@ -82,7 +82,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
           in Γ v ≡ DC∀′ a , b · Q ⇒ τs ⟶ T
            →   addAll (Vec-f.map (_↑t) τs) (upGamma {b} (upGamma {a} Γ) ↑Γ) 
              ► (upExp {b} (upExp {a} e) ↑e) ∶ δ ↝ C 
-           → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · Ⅎ′ b · (Imp (∃ 1 · Q ⊃ (C ∧′ δ ∼′ (upType {b} (upType {a} α₁) ↑t)))) 
+           → Γ ►′ v →′ e ∶ α₀ ⟶ α₁ ↝ Ⅎ′ a · Ⅎ′ b · (Imp′ Q (Ⅎ (C ∧′ δ ∼′ (upType {b} (upType {a} α₁) ↑t))))
                                                   ∧′ upType {b} (upType {a} α₀) ∼′ Type-f.map (PlusN-m.unit b) (applyAll a (TVar T))
       
     syntax alternativesConstraintGen Γ α₀ α₁ alts C = Γ ►► alts ∶ α₀ ⟶ α₁ ↝ C
@@ -138,7 +138,7 @@ module OutsideIn.Inference.ConstraintGen(x : X) where
                  up2 = PlusN-f.map n (PlusN-m.unit 2)
               in                     upGamma {n} (upGamma {2} Γ) ► Exp-f₂.map up2 x ∶ α₀ ↝ C              
                → upGamma {n} (upGamma {2} (⟨ ∀′ n · Q ⇒ t ⟩, Γ)) ► upExp {n} (upExp {2} y) ∶ α₁ ↝ C₂
-               → Γ ► let₃ n · x ∷ Q ⇒ t in′ y ∶ τ ↝ Ⅎ Ⅎ Ⅎ′ n · Imp (∃ 0 · QC-f.map up2 Q ⊃ (C ∧′ α₀ ∼′ Type-f.map up2 t)) 
+               → Γ ► let₃ n · x ∷ Q ⇒ t in′ y ∶ τ ↝ Ⅎ Ⅎ Ⅎ′ n · Imp′ (QC-f.map up2 Q)  (C ∧′ α₀ ∼′ Type-f.map up2 t)
                                                             ∧′ C₂ ∧′ upType {n} (upType {2} τ) ∼′ α₁
       Case : ∀{r₁}{r₂}{x : Expression _ _ r₁}{alts : Alternatives _ _ r₂}{C₁}{C₂}
            → let α₀ = TVar zero

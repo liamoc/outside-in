@@ -17,6 +17,9 @@
 \usepackage{tikz}
 \usepackage{pifont}   
 \usepackage{mathabx}
+\usepackage{color}
+\definecolor{superlightgray}{rgb}{0.95,0.95,0.95}
+\newcommand{\hilight}[1]{\colorbox{superlightgray}{#1}}
 \usepackage{float}
 \floatstyle{boxed} 
 \restylefloat{figure}
@@ -41,8 +44,8 @@
 \rule{\txtwidth}{0.4pt}\vspace*{-\baselineskip}\vspace{3.2pt}
 \rule{\txtwidth}{1.6pt}\\[\baselineskip]
 \scshape
-A Rigorous and Machine Checked Formulation of $\textsc{OutsideIn}(X)$ \\
-in a Dependently Typed Proof Assistant \\
+A rigorous and Machine Checked Formulation of $\textsc{OutsideIn}(X)$ \\
+in a Dependently Typed Programming Language\\
 \par
 \vspace*{2\baselineskip}
 A Thesis By \\[\baselineskip]
@@ -51,6 +54,9 @@ A Thesis By \\[\baselineskip]
 Supervised By \\[\baselineskip]
 {\Large MANUEL M. T. CHAKRAVARTY}
  \\[\baselineskip]
+ submitted in partial fulfillment of \\ the requirements for the honours degree of \\
+ \textbf{Bachelor of Science (Computer Science)}
+ \\[\baselineskip]
 {\itshape School of Computer Science and Engineering \\ University of New South Wales \par}
 \vfill
 \includegraphics[width=4cm]{unswcrest.pdf} \\
@@ -58,7 +64,7 @@ Supervised By \\[\baselineskip]
 \medskip
 
 %\plogo\\
-{\scshape May 20th 2012} \\
+{\scshape October 16th 2012} \\
 \par
 \endgroup}   
 %\linespread{1.5}
@@ -79,14 +85,14 @@ Supervised By \\[\baselineskip]
 %\mainmatter
 \begin{abstract}
 
-GHC, a Haskell compiler \cite{Anonymous:2010we}, offers numerous extensions to the standard Haskell type system \cite{Schrijvers:2009jg,
+GHC, a state of the art Haskell compiler \cite{Anonymous:2010we}, offers numerous extensions to the standard Haskell type system \cite{Schrijvers:2009jg,
    Yorgey:2012:GHP:2103786.2103795, citeulike:9320233, Jones:2007dr}.  Each of these extensions is usually specified only semi-formally, and only in
 isolation. Very little work has been done examining type system properties when multiple type system extensions are combined, which is the scenario
 actually being faced by GHC developers. To address this, the GHC team published $\outsidein$, a mostly-rigorous formulation of GHC's type inference
 system \cite{Vytiniotis:2011:OMT:2139531.2139533}, which encompasses every type system extension developed for GHC to date. 
 
 We formalise $\outsidein$ in a mechanical proof assistant, in order to provide a body of formal work upon which future extensions can be developed. By
-using a mechanical proof assistant we not only ensure correctness of our proofs and complete rigor in our definitions, but also make possible the
+using a mechanical proof assistant we not only ensure correctness of our proofs and complete rigour in our definitions, but also make possible the
 incremental development of the formal work alongside the more practically-minded type checker implementation in GHC\@. This additional accessibility
 will hopefully prevent further extensions from being developed without regard to the effect such an extension may have on other parts of the type
 system.
@@ -99,6 +105,20 @@ demonstrate its readiness for type system work, and also provide an example to e
 
 \tableofcontents
 %\end{titlepage}
+\newpage
+             \vspace*{\fill}
+\begin{quote}
+\large
+``There are many ways of trying to understand programs. People often rely too much on one way, which is called `debugging' and consists of running a
+partly-understood program to see if it does what you expected. Another way, which ML advocates, is to install some means of understanding in the very
+programs themselves.''
+\begin{flushright}
+   --- Robin Milner, \emph{Foreword to The Little MLer}
+\end{flushright}
+\normalsize
+\end{quote}
+
+             \vspace*{\fill}
 \newpage
 
 \section{Introduction}
@@ -119,29 +139,49 @@ As a first step towards solving this problem, the GHC team (specifically Vytinio
 modular type inference system that accommodates all of these extensions (and possibly more), along with soundness and principality proofs
 \cite{Vytiniotis:2011:OMT:2139531.2139533}. 
 
-Our work is intended to more rigorously formalise $\outsidein$ in the dependently-typed programming language \emph{cum} proof assistant Agda 2
+Our work aims to more rigorously formalise $\outsidein$ in the dependently-typed programming language \emph{cum} proof assistant Agda 2
 \cite{conf/afp/norell08}.
+
+\subsection{Related Work}
+
+The $\outsidein$ system itself is similar in presentation to the $\textsc{HM}(X)$ system, a parameterised formalisation of ML's type inference, first
+presented in \cite{Odersky97typeinference} and more rigorously formalised in \cite{Pottier:2005ue}. It is the culmination of years of work and is the
+latest in a series of type inference systems, starting with the original inference system for GADTs in Haskell based on ``wobbly types''
+\cite{Schrijvers:2009jg}, right up to the very similar $\textsc{LHM}(X)$ system presented in \cite{Vytiniotis:2010ja}. 
+
+Very little work has been done on formalising type inference in a proof assistant, and what little work that has been done is primarily focused on
+type inference for ML.\ Nipkow and Narachewski have formalised Milner's original $\mathcal{W}$ algorithm for the $\textsc{HM}$ calculus in Isabelle/HOL
+and proven soundness \cite{Naraschewski:1999:TIV:594135.594270}, and Dubois et al.\ simultaneously performed a similar verification in Coq
+\cite{Dubois99certificationof} for the purposes of developing a certified ML compiler \cite{Dubois00provingml}. Surprisingly, no type inference
+algorithms have been formalised in Agda before. Even more surprisingly, no algorithm which includes support for GADTs or other advanced type system
+features has ever been formalised in a proof assistant, to our knowledge.
+
+The techniques we use for term representation are drawn heavily from Bird's observation of monadic structure in syntax trees
+\cite{Bird:1999:DBN:968699.968702}, a concept first explored in \cite{Bellegarde:1994:SFM:202774.202788}. We also draw several representational tricks
+from works in generic programming using dependent types \cite{Morris04exploringthe} and McBride's work on structurally recursive unification
+\cite{McBride:2003bg}, which is used directly in our simple instantiation. 
+
 
 \subsection{Why mechanise $\outsidein$?}
 
-Any handwritten formalisation or proof, much like a handwritten algorithm, will likely lack the amount of rigor necessary to be accepted by a proof
-assistant. Formalising $\outsidein$ \emph{in a proof assistant} is therefore more difficult than it appears at first glance. The use of a proof
-assistant requires us to redesign those parts of the system that are not amenable to automated checking, and to make rigorous all those
-parts of the original formalisation that are left to the reader's intuition.
+Any handwritten formalisation or proof will likely lack the amount of rigour necessary to be accepted by a proof assistant, much like a handwritten
+algorithm is unlikely to be accepted by a programming language compiler. Formalising $\outsidein$ \emph{in a proof assistant} is therefore more
+difficult than it appears at first glance. The use of a proof assistant requires us to redesign those parts of the system that are not amenable to
+automated checking, and to make rigorous all those parts of the original formalisation that are left to the reader's intuition.
 
 By formalising $\outsidein$ in a proof assistant, we achieve two main goals. Firstly, we make explicit that which was implicit, and to prove that
 which was assumed in the original $\outsidein$ paper, ensuring that our formal work stands on solid ground; and secondly, we encourage those
 developing extensions for the type system to use our work as a foundation for their formalisation, along with the necessary practical implementation
-of the new extension in GHC's type checker. By making proofs available as code, we hope to mitigate the social problem of formal work on a type system
-being published in a long paper and subsequently ignored\footnote{See the new {\tt DataKinds} extension \cite{Yorgey:2012:GHP:2103786.2103795} }. 
+of the new extension in GHC's type checker. By making our formalisation available as code, we hope to mitigate the social problem of formal work on a
+type system being published in a long paper and subsequently ignored\footnote{See the new {\tt DataKinds} extension
+   \cite{Yorgey:2012:GHP:2103786.2103795} }. 
 
 \subsection{Why Agda?}
 
 Agda is an interesting choice of proof assistant for this task. This choice was made not simply because Agda is the most familiar to the author, but
-also because Agda is still quite experimental, and the subject of a great deal of new research. By formalising $\outsidein$ in Agda, we show
-Agda's readiness for type systems work, and provide an example for others researching type systems and considering Agda. Similar work has been done
-for $HM(X)$ in proof assistants such as Coq \cite{Dubois00provingml} and Isabelle \cite{Naraschewski:1999:TIV:594135.594270}, whereas our
-formalisation of $\outsidein$ is the first such work performed in Agda. 
+also because Agda is still quite experimental, and the subject of a great deal of new research. By formalising $\outsidein$ in Agda, we show Agda's
+readiness for type systems work, and provide an example for others researching type systems and considering Agda. Similar work has been done in Coq
+\cite{Dubois99certificationof} and Isabelle \cite{Naraschewski:1999:TIV:594135.594270}, but our formalisation is the first such work in Agda. 
 
 \subsection{A Brief Introduction to Agda}
  
@@ -173,21 +213,27 @@ has two main implications:
 
 \end{enumerate}
 
+\pagebreak
+
 \subsection{Overview}
 
-Our approach to $\outsidein$ is discussed in chapter two, where we rework various parts of $\outsidein$ that were informally presented originally,
-providing a more rigorous formalisation. Our method of term representation, including our use of an \emph{indexed abstract syntax tree} is explained
-in chapter three.  This choice of representation is very important for Agda formalisations, as mentioned in the previous section. Chapter four
-outlines our representation of the $\outsidein$ system itself, and chapter five discusses our simple instantiation of the \emph{X} parameter to
-sanity-check our definitions. Lastly, chapter six discusses future directions for this work, including proof work and instantiating the system for
-Haskell itself.
+There are three main components to our work, each discussed in a separate chapter:
+\begin{enumerate}
+      \item Our approach to $\outsidein$ is discussed in chapter two, where we rework various parts of $\outsidein$ that were informally presented originally,
+providing a more rigorous formalisation. 
+      \item Our encoding of the system in Agda, including our method of term representation, is explained in chapter three. As discussed in the
+         previous chapter, the choice of representation is very important for Agda work.
+      \item Chapter four introduces a simple instantiation of the \emph{X} parameter, which allows us not only to sanity-check our definitions, but also to
+         provide a testbed for experimentation with the system. 
+   \end{enumerate}         
+Lastly, chapter five discusses future directions for this work, including proof work and instantiating the system for Haskell itself.
 
 \newpage
 
-\section{Making $\outsidein$ Rigorous}
+\section{Making $\outsidein$ rigorous}
 
 $\outsidein$, published in \cite{Vytiniotis:2011:OMT:2139531.2139533}, is an approach to type inference approach that supports modular type inference
-and, most interestingly, \emph{local assumptions}, such as those introduced by pattern matching on a \emph{generalisd algebraic data type}, or GADT\@.
+and, most interestingly, \emph{local assumptions}, such as those introduced by pattern matching on a \emph{generalised algebraic data type}, or GADT\@.
 A GADT is more general than a regular algebraic data type because its constructors can have substantially more flexible types, including constraints
 and type variables not mentioned in the constructed type. This allows for a variety of useful features, such as existential quantification and type
 indexing \cite{Schrijvers:2009jg}.
@@ -218,7 +264,7 @@ When we pattern match on a GADT such as this, we introduce a \emph{local assumpt
 
 \medskip
 
-In this case, the local assumption $\mathit{Eq}\ \alpha$ allows the first alternative to type check, while the local assumption $\mathit{Show}\
+Here, the local assumption $\mathit{Eq}\ \alpha$ allows the first alternative to type check, while the local assumption $\mathit{Show}\
 \alpha$ allows the second alternative to type check. It is important to note that these assumptions must \emph{remain local}. This is especially
 apparent when the constraints are contradictory, for example using equality constraints\footnote{More conventionally, these constructors would not use
    type variables at all, instead each constructor would be parameterised by the concrete types \emph{Int} and \emph{Bool} respectively, however this
@@ -278,7 +324,6 @@ A principal type does exist, however, for $g$:
 \begin{displaymath}
    g :: \forall \beta. (\alpha \sim \mathit{Bool}) \Rightarrow \beta \rightarrow \mathit{Bool}
 \end{displaymath}
-
 That is, the constraint $\alpha \sim \mathit{Bool}$, rather than being rejected, is \emph{abstracted over} in the inferred type. Then, at any call site,
 we must provide evidence that $\alpha \sim \mathit{Bool}$, which can be done in this example thanks to the pattern matching. 
 
@@ -295,7 +340,7 @@ In $\outsidein$, this generalisation and abstraction of inferred constraints is 
 environment is empty. Therefore, the difficulties above disappear. At the local level, \emph{no generalisation is performed at all}. That is, an
 (unannotated) {\tt let}-binding $\mathbf{let}\ x = y\ \mathbf{in}\ e$ is equivalent to $(\lambda x.\ e)\ y$. While a cherished
 feature of most type inference algorithms since the original $\mathcal{W}$, {\tt let} generalisation at a local level turns out to be relied upon very
-rarely in practice, with a total of only 127 lines needing to be modified in the {\tt base} haskell library consisting of 94,954 lines after this
+rarely in practice, with a total of only 127 lines needing to be modified in the {\tt base} Haskell library consisting of 94,954 lines after this
 change was made \cite{Vytiniotis:2010ja}. 
 
 
@@ -313,7 +358,7 @@ for solving. All other constraints are solved immediately.  $\outsidein$, howeve
 The method used by GHC then can be viewed then as interleaving these two phases, whereas $\outsidein$ (at least in theory) keeps them distinct. Our
 formal work is derived from $\outsidein$, not GHC, and for such formal work we do not particularly care about the \emph{efficiency} of type inference,
 but rather the various properties we can prove about it. For this reason our formalisation also separates these phases. Indeed, we add
-\emph{additional} phases to this process, in order to more clearly separate the solver phase, as well as to deal with our extended constraint
+\emph{additional} phases to this process in order to more clearly separate the solver phase; as well as to deal with our extended constraint
 language, discussed in the next section. 
 
 \begin{figure}
@@ -355,8 +400,8 @@ Constraint generation in $\outsidein$ is specified independently of the exact co
 are part of the $X$ parameter. Clearly, some intuitive conditions must be met by these components, summarised in two additional parameters: an
 \emph{entailment relation} of global constraint schema to locally inferred constraints, and certain \emph{simplifier conditions} that ensure that the
 provided solver behaves consistently with this entailment relation. Specifically, the constraint system must include constraint conjunction and
-equality constraints (see fig.~\ref{fig:constraints}) that behave as one would expect, and any locally inferred constraints must be resolved trivially
-if they restate an axiom in a global constraint scheme (see fig.~\ref{fig:entailment}). This parameterisation of the system is similar to
+equality constraints (see Fig.~\ref{fig:constraints}) that behave as one would expect, and any locally inferred constraints must be resolved trivially
+if they restate an axiom in a global constraint scheme (see Fig.~\ref{fig:entailment}). This parameterisation of the system is similar to
 $\textsc{HM}(X)$, the parameterised extension of ML's type inference presented in \cite{Odersky97typeinference}\footnote{or the more rigorous
    formalisation presented by Pottier and Remy in their chapter of \emph{Advanced Types and Programming Languages} \cite{Pottier:2005ue}}, with the
 addition of global \emph{axiom schema}, which are designed to accommodate Haskell's type classes. Specifically, type class instances can generate
@@ -365,7 +410,7 @@ are expressed in axiom schema and do not form part of the main constraint langua
 
 In order to deal with local assumptions, $\outsidein$ extends $Q$, the original constraint language in $X$, to an \emph{algorithmic} constraint
 language $C$.  $C$ is just $Q$ with an additional form, $\exists\bar{\beta}.\ (Q \supset C)$, where $Q$ is a local assumption, $C$ is a constraint,
-and $\bar{\beta}$ are the \emph{only} variables that can be unified while solving the constraint $Q \supset C$. This local assumption is defined as a
+and $\bar{\beta}$ are the \emph{only} variables that can be unified while solving the constraint $Q \supset C$. The local assumption is defined as a
 constraint in the \emph{original} constraint language $Q$ specifically, rather than the larger $C$, as all local assumptions come from the constraint
 clause of a generalised type signature, either provided by the user or in the type of a generalised data constructor; they are not generated locally
 by the algorithm itself.
@@ -375,7 +420,7 @@ separation between the languages $C$, $Q$ and $\mathcal{Q}$ much more clear. In 
 $C$, written $\phi \land' \psi$, as the conjunction inherited from $Q$ can, technically, only contain $Q$-constraints. In addition, we have changed
 $\mathcal{Q}$, the language of axiom schema, so that it no longer includes all of $Q$. Instead, we make no assumptions about the forms that
 $\mathcal{Q}$ schema may take, and have reformulated the entailment relation to require \emph{both} a $\mathcal{Q}$-constraint \emph{and} a
-$Q$-constraint as context (see fig.~\ref{fig:entailment}). We have also added to the entailment relation requirements for conjunction elimination
+$Q$-constraint as context (see Fig.~\ref{fig:entailment}). We have also added to the entailment relation requirements for conjunction elimination
 rules as well as a rule to deal with $\epsilon$-constraints. These rules were inexplicably absent from the original presentation, despite being
 implicitly used repeatedly in the soundness proof presented in the same work.
 
@@ -432,7 +477,7 @@ this thesis, the term \emph{simplifier} is used to describe the $Q$-solver, wher
 
 \subsection{Fresh Variables}
 
-A common sin against mathematical rigor often committed in type inference literature is that of the magically fresh variable. This is an example taken
+A common sin against mathematical rigour often committed in type inference literature is that of the magically fresh variable. This is an example taken
 from a constraint generation rule (for lambda abstractions) in $\outsidein$:
 
 
@@ -537,7 +582,7 @@ variable introductions with quantifiers (where $\alpha$ and $\beta$ are not in t
 \end{displaymath}
 \end{figure}
 
-The changes required to most of the other rules are in a similar vein (See fig.~\ref{fig:constraintgen} for a full set). This more rigorous
+The changes required to most of the other rules are in a similar vein (See Fig.~\ref{fig:constraintgen} for a full set). This more rigorous
 formulation of constraint generation is equivalent to the original presentation, with the added benefit of a formalized notion of fresh
 variables, and less ambiguity in the presentation of the constraint languages.
 
@@ -594,7 +639,6 @@ variables bound by the existential quantifier $\exists \bar{\beta}$. This rule t
 unification variables introduced within the implication, as they do in the original $\outsidein$ formulation. 
 
 \begin{figure}
-   \label{fig:prenexer}
 \begin{displaymath}
 	\text{\framebox{$C \stackrel{\text{pnx}_1}{\mapsto} C$}}
 \end{displaymath}
@@ -622,6 +666,7 @@ unification variables introduced within the implication, as they do in the origi
 
 
 \caption{Prenexer rewrite rules, and their reflexive transitive closure}
+   \label{fig:prenexer}
 \end{figure}
 \medskip
 
@@ -632,7 +677,7 @@ each expression accordingly, thus ensuring that names remain unique (See chapter
 Once all $\Finv$ quantifiers have been moved by the prenexer, we will have an expression of the form $\Finv \bar{\alpha}.\ C$ where $C$ consists only
 of the extended syntax used originally in $\outsidein$, and all fresh names introduced by the constraint generation have been made globally unique ---
 exactly the semantics of the informal \textbf{fresh} constructor used previously.  Therefore, after rewriting, we can simply pass $C$ to the
-subsequent solver phase, using $\bar{\alpha}$ as the set of variables the solver may unify (see the top level rules in fig.~\ref{fig:toplevel}). 
+subsequent solver phase, using $\bar{\alpha}$ as the set of variables the solver may unify (see the top level rules in Fig.~\ref{fig:toplevel}). 
 
 \subsection{Solver and Separator}
 
@@ -671,23 +716,28 @@ subsequent solver phase, using $\bar{\alpha}$ as the set of variables the solver
 Our presentation of the solver infrastructure is somewhat different to the solver infrastructure in the original paper.  Here we introduce a new form
 of \emph{separated} $C$-constraint, denoted $\mathcal{C}$, which contains a vanilla $Q$-constraint, already solvable by the provided simplifier, and
 a special $I$ constraint, which contains only local assumption implications (whose bodies are, in turn, separated $\mathcal{C}$ constraints, see
-fig.~\ref{fig:solver}). Our solver operates on these separated constraints rather than the $C$-constraints directly, so we introduce a function
+Fig.~\ref{fig:solver}). Our solver operates on these separated constraints rather than the $C$-constraints directly, so we introduce a function
 $\textbf{sep} : C \rightarrow \mathcal{C}$, defined in terms of helper functions $\textbf{simple} : C \rightarrow Q$ and $\textbf{implic} : C
 \rightarrow I$, which forms an additional phase in the inference algorithm.  
 
 In the original presentation of the $\outsidein$ solver, the separation of constraints into simple and implication components was performed inline
 with the main solver rule, rather than in a separate phase. This makes the termination argument for the main solving rule slightly less clear, as it
 must be established that, for all $C$, $\textbf{simple}[C]$ and $\textbf{implic}[C]$ are no larger than $C$ itself. This, while obvious to a human
-observer, is not so obvious to a proof assistant. We simply sidestep any termination troubles by encoding the separation of constraints as a separate
+observer, is not so obvious to a proof assistant. We simply sidestep any termination trouble by encoding the separation of constraints as a separate
 phase, rather than interleaving them as in the original presentation.
 
-Our main solving judgement is of the form $\mathcal{Q};Q_{\text{given}}; \overline{\alpha_\text{tch}} \stackrel{\text{solv}}{\vdasharrow}
-\mathcal{C}_{\text{wanted}} \leadsto Q_{\text{residual}};\theta$, which can be read as, ``Given the axiom scheme $\mathcal{Q}$ and constraint
+Our main solving judgement is of the following form:
+\begin{displaymath}
+\mathcal{Q};Q_{\text{given}}; \overline{\alpha_\text{tch}} \stackrel{\text{solv}}{\vdasharrow}
+\mathcal{C}_{\text{wanted}} \leadsto Q_{\text{residual}};\theta
+\end{displaymath}
+
+This can be read as, ``Given the axiom scheme $\mathcal{Q}$ and constraint
 $Q_\text{given}$, the constraint $\mathcal{C}_{\text{wanted}}$ is simplified to $Q_{\text{residual}}$ producing the substitution $\theta$ where
 $\mathit{dom}(\theta) \subseteq \overline{\alpha_\text{tch}}$.'' Note that while the solver is not obliged to solve \emph{all} constraints, the
 remaining residual constraint is a \emph{Q}-constraint, not a $\mathcal{C}$-constraint, which means that, at the very least, all implication
 constraints must be resolved. This is important, as the constraints left residual from the solver are abstracted over when generalising on top-level
-definitions (see fig.~\ref{fig:toplevel}), and $C$ constraints do not form part of the constraint language available to the user of the language ---
+definitions (see Fig.~\ref{fig:toplevel}), and $C$ constraints do not form part of the constraint language available to the user of the language ---
 It would be highly unusual for a type inference algorithm to provide type signatures that the user of the language could not express themselves! 
 
 \begin{figure}
@@ -733,9 +783,9 @@ have made to the system. In particular:
 
 \end{itemize}
 
-Despite the added rigor in our version of the $\outsidein$ system, some informality still remains in these definitions - in particular, the
+Despite the added rigour in our version of the $\outsidein$ system, some informality still remains in these definitions - in particular, the
 possibility of name conflicts is ignored, assertions are made informally about substitution domains, and the rule \textsc{Bind} in
-figure~\ref{fig:toplevel} relies on an informally specified ``free unification variables'' operation. Naturally, in order to formalise this system in
+Figure~\ref{fig:toplevel} relies on an informally specified ``free unification variables'' operation. Naturally, in order to formalise this system in
 a proof assistant, we still must resolve these issues. All of these problematic elements are eliminated via our representation of terms and names,
 discussed in the next chapter.
 
@@ -745,7 +795,7 @@ discussed in the next chapter.
 \section{Encoding Types and Terms}
 \label{sec:terms}
 
-Constraints and expressions cannot be expressed in Agda simply as a series of datatypes, because the exact structures of these terms is dependent on
+Constraints and expressions cannot be expressed in Agda simply as a series of data types, because the exact structure of these terms is dependent on
 the parameter $X$. $C$-constraints, which are not part of $X$, can contain $Q$-constraints, which are part of it. Similarly, expressions, not part of
 $X$, can contain types, which are.
 
@@ -764,9 +814,11 @@ parameter as an argument to our modules. Here is a sketch of the Agda code used 
    \end{array}
 \end{displaymath}
 
+(In all future code, we will use \textsf{sans-serif font} to refer to elements of the parameter $X$)
+
 Note that the type of $X$ is $\text{Set}_1$, rather than the usual type-of-types $\text{Set}$, because the $X$ parameter sits one meta-level higher
-than the definitions themselves --- The type $\text{Set}$ cannot contain $\text{Set}$ without making Agda inconsistent\footnote{The inconsistency
-   arises from Russell's paradox}.
+than the definitions themselves --- the type $\text{Set}$ cannot contain $\text{Set}$ without making Agda inconsistent\footnote{The inconsistency
+   arises from Russell's paradox.}.
 
 Over the course of this chapter, we will gradually refine this sketch into the concrete definitions we use in our formalisation. 
 
@@ -787,8 +839,8 @@ published in \cite{Pouillard:2011hc}. Based on the notion of an \emph{abstract w
 programming errors when working with de Bruijn indices (which, over the years, have established some notoriety for being somewhat difficult beasts to
 tame). While his approach is certainly not without merit, we feel that using such a library to represent terms in $\outsidein$ may needlessly
 complicate our definitions. The approach we have taken, based on de Bruijn indices, allows us to exploit type-indexing techniques to generate a number
-of ``theorems for free'' via parametricity \cite{Wadler:1989vy}. It is not clear that we could retain this simplicity and generality were we to rely 
-on Pouillard's work.
+of ``theorems for free'' via parametricity \cite{Wadler:1989vy}, and expose an elegant categorical structure in our representation. It is not clear
+that we could retain this simplicity and generality were we to rely on Pouillard's work.
 
 \pagebreak
 
@@ -898,7 +950,7 @@ The local assumption constraint, unlike the $\Finv$ quantifier, introduces more 
 Note that the antecedent $\textsf{QConstraint}$ has only $n$ available variables, not $n + m$, as it is impossible for the antecent to mention any
 unification variables introduced in the succedent $C$-constraint. 
 
-\subsection{Nested Datatypes Approach}
+\subsection{Nested Data Types}
 
 While this indexing provides us a very nice way to handle de Bruijn indices for bound variables, we have not introduced an elegant way to handle type
 constructors, such as \emph{Int} or \emph{Maybe}, which exist in the top-level environment. 
@@ -906,18 +958,19 @@ constructors, such as \emph{Int} or \emph{Maybe}, which exist in the top-level e
 From the perspective of the constraint generation and solver infrastructure, type constructors are no different from type variables. One possible
 solution, therefore, is to simply assign indices to these top level type constructors. This makes type constructors difficult to distinguish
 from type variables, however, which becomes a serious problem when instantiating the $X$ parameter --- type constructors, which are treated as
-\emph{rigid} and cannot be unified, must be distinguished from unification type variables, which can be substituted.
+\emph{rigid} and cannot be unified, must be distinguished from unification type variables, which can be substituted. In addition, assigning indices to
+top-level global definitions is aesthetically unpleasing.
 
 A common alternative is to introduce a separate $\mathit{Con}$ introduction form for $\textsf{Type}$, which refers to type constructors, as opposed to
 the $\mathit{Var}$ form for type variables. This solution becomes unsatisfactory when we examine the solver infrastructure (see
-fig.~\ref{fig:solver}). Note that, when solving each implication constraint, \emph{all} variables bound outside the implication constraint,
-\emph{including} variables that are unifiable, are treated as rigid, skolem variables. This means that a variable previously treated as unifiable
+Fig.~\ref{fig:solver}). Note that, when solving each implication constraint, \emph{all} variables bound outside the implication constraint,
+\emph{including} variables that are unifiable outside the implication, are treated as rigid, skolem variables. This means that a variable previously treated as unifiable
 could, in a different context, be treated as rigid like a constructor. Using a separate $\mathit{Con}$ form therefore does not bring any advantage ---
 we still have some subset of the available type variables being treated as skolem. 
 
 Our approach allows us to treat type constructors and type variables identically in the constraint generation and solver infrastructure of the
-$\outsidein$ system itself, but we retain the ability to separate skolem variables from unification variables in the instantiation of the $X$
-parameter. In addition, type constructors can be represented by \emph{any} type\footnote{Provided such a type has decidable equality.}, and therefore
+$\outsidein$ system itself, but retain the ability to separate skolem variables from unification variables when implementing the simplifier. 
+In addition, type constructors can be represented by \emph{any} type\footnote{Provided such a type has decidable equality.}, and therefore
 do not need to be assigned indices, which makes working with the system a great deal more convenient. 
 
 Our approach is to index terms not by the \emph{size} of the set of available type variables, but by the \emph{set itself}, as shown below:
@@ -953,7 +1006,7 @@ Our approach is to index terms not by the \emph{size} of the set of available ty
      \end{array}
    \end{array}
 \end{displaymath}
-\caption{Constraint representation with nested datatypes}
+\caption{Constraint representation with nested data types}
 \end{figure}
 
 The secret to this representation lies in the $\mathcal{S}$ data type, used when new type variables are made available by quantifiers. As an
@@ -977,9 +1030,15 @@ We also introduce another operation $\oplus$, for local assumptions, which is es
       \end{array}
 \end{displaymath}
 
+Then, a simplifier can take as arguments constraints of type $\textsf{QConstraint}\ (x \oplus n)$, where $x$ is the type for rigid
+variables and constructors, and $n$ is the number of additional variables that can be unified. This obviates the need for an explicit set
+$\overline{\alpha_\text{tch}}$ to be passed to the solver --- instead this information can be gleaned purely from the type of constraints passed in.
+This approach is advantageous because it allows us to handle this reinterpretation of variables in a unification or skolem context without changing
+the structure of the term. 
+
 \subsubsection{Monads}
 
-One of the elegant things about this representation is that type terms can now form a categorical abstraction familiar to every Haskell programmer --- a
+Another elegant observation about this representation is that type terms can now form a categorical abstraction familiar to every Haskell programmer --- a
 \emph{monad}. This monadic structure is not an original discovery; it has been demonstrated by others in the past, doing similar work on term
 representation \cite{Bird:1999:DBN:968699.968702, Bellegarde:1994:SFM:202774.202788}.  Originally from category theory, a \emph{monad} is understood
 by functional programmers to be a type constructor $m$, a function $unit : \alpha \rightarrow m\ \alpha$ and a \emph{Kleisli composition} operator
@@ -1013,7 +1072,7 @@ structure of the type terms.
 We can simply derive the familiar $\mathit{bind}$ function from Kleisli composition and \emph{unit}:
 \begin{displaymath}
    \begin{array}{ll}
-	\mathit{bind} : (\alpha \rightarrow m\ \beta) \rightarrow m\ \alpha \rightarrow m\ \beta \\
+	\mathit{bind} : \forall \{ \alpha\ \beta \} \rightarrow (\alpha \rightarrow m\ \beta) \rightarrow m\ \alpha \rightarrow m\ \beta \\
    \mathit{bind}\ f\ a = (f \circ_m (\lambda x \rightarrow a))\ \text{it}
    \end{array}
 \end{displaymath}
@@ -1021,10 +1080,10 @@ We can simply derive the familiar $\mathit{bind}$ function from Kleisli composit
 
 When applied to types, \emph{bind} is clearly application of a substitution to a term:
 \begin{displaymath}
-	\mathit{bind} :  (\alpha \rightarrow \textsf{Type}\ \beta) \rightarrow \textsf{Type}\ \alpha \rightarrow \textsf{Type}\ \beta
+	\mathit{bind} : \forall \{\alpha\ \beta \} \rightarrow (\alpha \rightarrow \textsf{Type}\ \beta) \rightarrow \textsf{Type}\ \alpha \rightarrow \textsf{Type}\ \beta
 \end{displaymath}
 Viewed categorically, \emph{bind} could be viewed here as a mapping from morphisms in the Kleisli category of $\textsf{Type}$ (i.e functions with
-types of the form $\alpha \rightarrow \textsf{Type}\ \beta$) to morphisms in a new subcategory of $\textbf{Agda}$ in the image of $\textbf{Type}$,
+types of the form $\alpha \rightarrow \textsf{Type}\ \beta$) to morphisms in a new subcategory of $\textbf{Agda}$ in the image of $\textsf{Type}$,
 which we call the $\textsf{Type}$-subcategory. This category has morphisms consisting of Agda functions, and objects consisting of types of the form
 $\textsf{Type}\ \tau$ for any $\tau$. Note that the following two properties hold for $\mathit{bind}$:
 
@@ -1043,9 +1102,9 @@ substitution on $\mathsf{QConstraint}$s and, ultimately, $\textsc{Constraint}$s.
 To achieve this we require in the parameter $X$ \emph{another} functor, also from the Kleisli category of $\textsf{Type}$, but this time to the 
 subcategory of \textbf{Agda} in the image of $\textsf{QConstraint}$ --- the $\textsf{QConstraint}$-subcategory: 
 \begin{displaymath}
-   \textit{Q-subst} : (\alpha \rightarrow \textsf{Type}\ \beta) \rightarrow (\textsf{QConstraint}\ \alpha \rightarrow \textsf{QConstraint}\ \beta)
+   \textit{Q-subst} : \forall \{ \alpha\ \beta \} \rightarrow (\alpha \rightarrow \textsf{Type}\ \beta) \rightarrow (\textsf{QConstraint}\ \alpha \rightarrow \textsf{QConstraint}\ \beta)
 \end{displaymath}
-The functor laws tell us that this is, once again, a substitution operation:
+The functor laws tell us that this, once again, respects substitution operations:
 
 \begin{tabular}{llll}
       \textbf{Identity}: & $\textit{Q-subst}\ \mathit{unit} $&$\stackrel{\cdot}{=}$&$ \mathit{id}$\\
@@ -1053,12 +1112,11 @@ The functor laws tell us that this is, once again, a substitution operation:
 \end{tabular}
 
 Given this functor, similar functors can be produced for $\textsc{Constraint}$ and, indeed, any type that similarly contains $\textsc{QConstraint}$s.
+
 Some difficulty arises, however, when defining the functor for terms which introduce variables: The form $\Finv.\ C$ contains a subexpression of type
 $\textsc{Constraint}\ (\mathcal{S}\ \alpha)$. Showing that $\mathcal{S}$ is a monad\footnote{The familiar \texttt{Maybe} monad, no less} produces the
 requisite functors to transform our substitution $\alpha \rightarrow \textsf{Type}\ \beta$ to a substitution $\mathcal{S}\ \alpha \rightarrow
-\textsf{Type}\ (\mathcal{S}\ \beta)$, as required for this case. 
-
-The other case for the form $\exists n.\ Q \supset C$ contains a subexpression of type
+\textsf{Type}\ (\mathcal{S}\ \beta)$, as required for this case. The form $\exists n.\ Q \supset C$ contains a subexpression of type
 $\textsc{Constraint}\ (\alpha\ \oplus\ n)$, which is a slightly more complicated beast to tame. Here, we must show not only that $\mathcal{S}$ is a monad, but that
 $\mathcal{S} \circ \mathcal{S}$ is also, and $\mathcal{S} \circ \mathcal{S} \circ \mathcal{S}$, and so on. In other words, we have to show that for all
 $n$, $\lambda \alpha.\ \alpha \oplus n$ is a monad.  Towards this end, we borrow the concept of a \emph{monad transformer}, i.e.\ a monad homomorphism \emph{lift} from
@@ -1066,15 +1124,17 @@ any monad $M$ to $M \circ \mathcal{S}$. By showing that \emph{lift} is monad hom
 $M \circ \mathcal{S}$ is a monad if $M$ is a monad, it can be trivially shown that any number of $\mathcal{S}$'s form a monad, and
 thus that $\lambda \alpha.\ \alpha \oplus n$ is a monad as required.                                                                
 
+Using the above, we have defined similar ``substitution functors'' for all types that are indexed by the set of type variables.
+
 \subsubsection{Renaming}
 
 Another common operation for $\textsf{Type}$s, $\textsf{QConstraint}$s and so on is \emph{renaming}. Renaming can be implemented via functor
 composition in terms of substitution:
 \begin{displaymath}
    \begin{array}{l}
-      \textit{$\tau$-rename} : (\alpha \rightarrow \beta) \rightarrow (\textsf{Type}\ \alpha \rightarrow \textsf{Type}\ \beta) \\
+      \textit{$\tau$-rename} : \forall \{ \alpha\ \beta \} \rightarrow (\alpha \rightarrow \beta) \rightarrow (\textsf{Type}\ \alpha \rightarrow \textsf{Type}\ \beta) \\
       \textit{$\tau$-rename}\ f = \mathit{bind}\ (\mathit{rename}\ f) \\ \\ 
-      \textit{Q-rename} : (\alpha \rightarrow \beta) \rightarrow (\textsf{QConstraint}\ \alpha \rightarrow \textsf{QConstraint}\ \beta) \\
+      \textit{Q-rename} :  \forall \{ \alpha\ \beta \} \rightarrow(\alpha \rightarrow \beta) \rightarrow (\textsf{QConstraint}\ \alpha \rightarrow \textsf{QConstraint}\ \beta) \\
       \textit{Q-rename}\ f = \textit{Q-subst}\ (\mathit{rename}\ f) \\  \\ 
       \cdots
    \end{array}
@@ -1082,7 +1142,7 @@ composition in terms of substitution:
 Where $\mathit{rename}$ is a functor from the base $\textbf{Agda}$ category to the Kleisli category of $\textsf{Type}$:
 \begin{displaymath}
    \begin{array}{l}
-      \textit{rename} : (\alpha \rightarrow \beta) \rightarrow (\alpha \rightarrow \textsf{Type}\ \beta) \\
+      \textit{rename} : \forall \{ \alpha\ \beta \} \rightarrow (\alpha \rightarrow \beta) \rightarrow (\alpha \rightarrow \textsf{Type}\ \beta) \\
       \textit{rename}\ f = \mathit{unit} \circ f
    \end{array}
 \end{displaymath}
@@ -1128,14 +1188,10 @@ The general approach for proving lemmas which require extensionality is to prove
    a dependent product $(\tau, \approx)$ where $\approx$ is an equivalence relation on the type $\tau$.} model
 \cite{Altenkirch:1999:EEI:788021.788977}. As this becomes quite tedious in practice, we opt for the perhaps more inelegant approach of simply
 postulating functional extensionality:
-
 \begin{displaymath}
 	\textbf{postulate}\ \mathit{extensionality} : \{A\ B : \text{Set}\}\{f\ g : A \rightarrow B \} 
                    \rightarrow (\forall x \rightarrow f\ x \equiv g\ x) \rightarrow f \equiv g
 \end{displaymath}
-
-\medskip
-
 Agda's logic is consistent with this postulate, however we do lose the sometimes-valuable property of \emph{canonicity} for equality proofs -- that
 is, not all equality proofs normalise to a canonical closed term (i.e \emph{refl}), as the postulate prevents normalisation. In practice, this means
 that programs which depend on this postulate will not give meaningful results (they crash the program much like Haskell's {\tt error}), however the
@@ -1144,11 +1200,113 @@ postulate can be freely used for proof work - that is, to show that a particular
 We do not need extensionality to model the $\outsidein$ algorithm itself. We require it only to prove monad laws and similar identities about our term
 representation. The loss of canonicity in exchange for simpler proofs is a trade we deem acceptable.
 
+\subsection{Separator and Prenexer}
+
+The definition of $\textsc{SeparatedConstraint}$, our representation of $\mathcal{C}$, is uninteresting save that it too is indexed by the set of
+available type variables, and is similarly equipped with functors for substitution.
+
+It seems correct, then, that our separator should be a total function of the following type:
+\begin{displaymath}
+   \mathit{sep} : \forall\ \{\mathit{tv} : \text{Set}\} \rightarrow \textsc{Constraint}\ \mathit{tv} \rightarrow \textsc{SeparatedConstraint}\
+   \mathit{tv}
+\end{displaymath}
+
+However our $\mathit{sep}$ function is not total, as it is. The $\textbf{sep}$ function defined in Figure~\ref{fig:solver} is not defined for
+constraints of the form $\Finv.\ C$. To solve this problem, we adjust our constraint representation to be indexed by a \emph{strata}:
+\begin{figure}[H]
+\begin{displaymath}
+   \begin{array}{l}
+   \textbf{record}\ \textsc{X} : \text{Set}_1\ \textbf{where} \\ \qquad
+   \begin{array}{llcl} 
+   \textbf{field} & \textsf{Type} & : & \text{Set} \rightarrow \text{Set} \\ 
+                  & \textsf{Var} & : & \forall \{ n : \text{Set} \} \rightarrow n \rightarrow \textsf{Type}\ n \\
+                  & \rightarrow' & : & \forall \{ n : \text{Set} \} \rightarrow \textsf{Type}\ n \rightarrow \textsf{Type}\ n 
+                                                                    \rightarrow \textsf{Type} \ n \\
+   \textbf{field} & \textsf{QConstraint} & : & \text{Set} \rightarrow \text{Set} \\
+                  & \epsilon & : & \forall \{ n : \text{Set} \} \rightarrow \textsf{QConstraint}\ n \\
+                  & \land & : & \forall \{ n : \text{Set} \} \rightarrow \textsf{QConstraint}\ n \rightarrow \textsf{QConstraint}\ n 
+                                                             \rightarrow \textsf{QConstraint}\ n \\
+                  & \sim & : &\forall \{ n : \text{Set} \} \rightarrow  \textsf{Type}\ n \rightarrow \textsf{Type}\ n 
+                                                           \rightarrow  \textsf{QConstraint}\ n\\
+   \end{array}\\
+   \textbf{module}\ \mathit{OutsideIn}\ ( x : \textsc{X})\ \textbf{where} \\ \qquad 
+	\begin{array}{l}
+      \textbf{open}\  X(x)\\ 
+      \text{\hilight{$
+            \begin{array}{l}
+      \textbf{data}\  \textsc{Strata} : \text{Set}\ \textbf{where} \\ \qquad
+        \begin{array}{lll}
+           \mathit{Hi} & : & \textsc{Strata} \\
+           \mathit{Lo} & : & \textsc{Strata}
+        \end{array}\end{array}$} } \\
+		\textbf{data}\  \textsc{Constraint}\ (n :\text{Set}) : \text{\hilight{$\textsc{Strata} \rightarrow$}} \text{Set}\ \textbf{where} \\ \qquad
+		               \begin{array}{lcl}
+                   \mathit{QC} & : & \text{\hilight{$ \forall \{ \sigma : \textsc{Strata} \} \rightarrow $}} \textsf{QConstraint}\ n \rightarrow \textsc{Constraint}\ n\
+             \text{\hilight{$\sigma$}} \\
+						 \land'   & : & \text{\hilight{$ \forall \{ \sigma : \textsc{Strata} \} \rightarrow $}} \textsc{Constraint}\ n\ \text{\hilight{$\sigma$}} \rightarrow \textsc{Constraint}\ n\ \text{\hilight{$\sigma$}} 
+                                                              \rightarrow \textsc{Constraint}\ n\ \text{\hilight{$\sigma$}} \\
+						 \Finv    & : & \textsc{Constraint}\ (\mathcal{S}\ n)\ \textit{\hilight{Hi}} \rightarrow \textsc{Constraint}\ n\
+                \textit{\hilight{Hi}} \\
+                   \exists\_.\_\supset\_ & : & \text{\hilight{$ \forall \{ \sigma \} \rightarrow $}} (m : \mathbb{N}) \rightarrow \textsf{QConstraint}\ n \rightarrow
+          \textsc{Constraint}\ (n \oplus m)\ \text{\hilight{$\sigma$}}  \\
+ & &          \rightarrow \textsc{Constraint}\ n\ \text{\hilight{$\sigma$}} 
+					    \end{array} \\
+     \end{array}
+   \end{array}
+\end{displaymath}
+\caption{Final Constraint Representation}
+\end{figure}
+\pagebreak
+
+Note that the type $\textsc{Constraint}\ n\ \mathit{Hi}$ contains all forms of constraints, whereas the type $\textsc{Constraint}\ n\ \mathit{Lo}$
+contains all constraints except for constraints of the form $\Finv.\ C$. This allows us to achieve a limited kind of subtyping via type indexing.
+
+Now we can more accurately specify the domain of the $\mathit{sep}$ function, so as to make it total:
+\begin{displaymath}
+   \mathit{sep} : \forall\ \{\mathit{tv} : \text{Set}\} \rightarrow \textsc{Constraint}\ \mathit{tv}\ \mathit{Lo} \rightarrow \textsc{SeparatedConstraint}\
+   \mathit{tv}
+\end{displaymath}
+
+We can also give a more detailed account of the type of the prenexer:
+\begin{displaymath}
+   \mathit{prenex} : \forall\ \{\mathit{tv} : \text{Set}\} \rightarrow \textsc{Constraint}\ \mathit{tv}\ \mathit{Hi} \rightarrow \exists\ (\lambda\ n
+   \rightarrow  \textsc{Constraint}\ (\mathit{tv} \oplus n)\ \mathit{Lo})
+\end{displaymath}
+
+Implementing the prenexer as presented in Figure~\ref{fig:prenexer} is somewhat difficult, as it is presented as a rewrite system rather than as a
+neat structural recursion. We instead implement a structurally recursive prenexer as shown in Figure~\ref{fig:structrecprenexer}. The equivalence
+between these two formalisations can be proven via an easy induction.
+
+\begin{figure}
+  
+\begin{displaymath}
+	\text{\framebox{$C \stackrel{\text{prenex}}{\longrightarrow} C$}}
+\end{displaymath}
+\begin{displaymath}
+	\begin{array}{c}
+      \inferrule*[Right=PrenexQC]{\quad}{Q \stackrel{\text{prenex}}{\longrightarrow} Q} \qquad    \qquad \qquad
+      \inferrule*[Right=PrenexF]{C \stackrel{\text{prenex}}{\longrightarrow} C'}{\Finv \alpha.\ C \stackrel{\text{prenex}}{\longrightarrow} \Finv
+         \alpha.\ C'}\\
+      \inferrule*[Right=PrenexConj]{x \stackrel{\text{prenex}}{\longrightarrow} \Finv \bar{\alpha}.\ x' 
+                                 \\ y \stackrel{\text{prenex}}{\longrightarrow} \Finv \bar{\beta}.\ y' }
+                                   {x \land y \stackrel{\text{prenex}}{\longrightarrow} \Finv \bar{\alpha}\bar{\beta}.\ x' \land y'} \\
+      \inferrule*[Right=PrenexImp]{C \stackrel{\text{prenex}}{\longrightarrow} \Finv \bar{\beta}.\ C' }
+                                  {\exists \bar{\alpha}.\ Q \supset C \stackrel{\text{prenex}}{\longrightarrow} \exists \bar{\alpha}\bar{\beta}.\ Q
+                                     \supset C'}
+		%x \land' (\Finv \alpha.\ y) & \stackrel{\text{pnx}_1}{\mapsto} & \Finv \alpha.\ x \land' y & \textsc{Prenex$_1$}\\
+		%(\Finv \alpha.\ x) \land' y & \stackrel{\text{pnx}_1}{\mapsto} & \Finv \alpha.\ x \land' y & \textsc{Prenex$_2$}\\	
+		%\exists \bar{\beta}.\ Q \supset (\Finv \alpha.\ x) & \stackrel{\text{pnx}_1}{\mapsto} & \exists \bar{\beta}\alpha.\ Q \supset x &
+      %\textsc{Prenex$_3$} 	
+	\end{array}
+\end{displaymath}
+   \caption{A structurally recursive prenexer}
+   \label{fig:structrecprenexer}
+\end{figure}
+
 \subsection{Expressions}
 
-Our representation of \textsc{Expression}s merits some attention as it is indexed by not one, but \emph{two} types --- one for available type variable
+Our representation of \textsc{Expression} merits some attention as it is indexed by not one, but \emph{two} types --- one for available type variable
 names, and one for available variables on the \emph{value} level:
-
 \begin{displaymath}
          \textbf{data}\ \textsc{Expression}\ (\mathit{ev}\ \mathit{tv} : \text{Set}) :\ \cdots
 \end{displaymath}
@@ -1156,13 +1314,15 @@ names, and one for available variables on the \emph{value} level:
 This approach brings a number of advantages. For example, type environments like $\Gamma$ can be represented as a total function --- it is impossible
 for an environment lookup to fail. This also ensures that we update the type environment whenever new value-level variables are available.
 
-It is problematic, however, when dealing with pattern matching. Inside a pattern alternative, some number of new variables are introduced into scope.
-The exact number of variables, however, is dependent on the \emph{type} (or, at least, the arity) of the data constructor in the pattern. Furthermore, it
-is already true that data constructors require special treatment --- only data constructor names may appear in patterns. 
+It is problematic, however, when dealing with pattern matching. Inside a pattern alternative, some number of new value variables are introduced into scope
+--- this number should be reflected in the $\mathit{ev}$ index.
+The exact number of variables, however, is dependent on the \emph{type} (or, at least, the arity) of the data constructor in the pattern, which is not
+information we have in our possession when constructing syntax trees. Furthermore, it
+is already clear that data constructors require separate treatment from regular variables, as patterns contain only names of data constructors, not
+arbitrary variables.
 
 This calls for a more sophisticated representation of names in expressions. Instead of simply using $\mathit{ev}$ to refer to value-level variables,
 we will use $\textsc{Name}\ \mathit{ev}$, defined as follows:
-
 \begin{displaymath}
 \begin{array}{l}
          \textbf{data}\ \textsc{NameType} : \text{Set}\ \textbf{where} \\
@@ -1177,11 +1337,9 @@ we will use $\textsc{Name}\ \mathit{ev}$, defined as follows:
          \end{array} 
          \end{array} 
 \end{displaymath}
-
 (Where \textsf{dc} is a type for datacon names, indexed by their arity, provided in the parameter $X$)
 
-
-A \textsc{Name} can signify, therefore, either a straightforward binding \emph{or} a data constructor of some arity. As this information is presented
+A \textsc{Name} can signify, therefore, either a straightforward binding \emph{or} a data constructor of some arity. As the arity is presented
 in the type $\textsc{Name}$, we can easily produce the desired type for a pattern matching alternative:
 \begin{displaymath}
    \begin{array}{l}
@@ -1193,19 +1351,17 @@ in the type $\textsc{Name}$, we can easily produce the desired type for a patter
          \end{array}
 \end{displaymath}
 
-This technique works greatly to our advantage, as there is another instance where data constructors require special treatment, this time in constraint
-generation. Observe the two rules in constraint generation where the environment is consulted; the rules $\textsc{App}$ and $\textsc{Case}$:
+This technique works greatly to our advantage as there is another instance where data constructors require special treatment; this time in constraint
+generation. Observe the two rules in constraint generation where the environment is consulted; the rules $\textsc{VarCon}$ and $\textsc{Case}$:
 \begin{displaymath}
-   \begin{array}{l}
-		\inferrule*[Right=App]
-        {\alpha_1,\alpha_2,\alpha_3,\Delta;\Gamma \vdasharrow e_1 : \alpha_1 \leadsto C_1 
-          \\ \alpha_1,\alpha_2,\alpha_3,\Delta;\Gamma \vdasharrow e_2 : \alpha_2 \leadsto C_2}
-        {\Delta;\Gamma \vdasharrow e_1\ e_2 : \tau \leadsto 
-          \Finv \alpha_1.\ \Finv \alpha_2.\ \Finv \alpha_3.\ C_1 \land' C_2 
-            \land' (\alpha_1 \sim (\alpha_2 \rightarrow \alpha_3)) \land' (\tau \sim \alpha_3)  } \\     \\
+   \begin{array}{c}
+		\inferrule*[Right=VarCon]
+        {\text{\hilight{$(v : \forall\bar{a}.\ Q_1 \Rightarrow \tau_1)$}} \in \Gamma}
+        {\Delta;\Gamma \vdasharrow v : \tau \leadsto 
+            \Finv \bar{\alpha}.\ [\overline{a \mapsto \alpha}]Q_1 \land' (\tau \sim [\overline{a \mapsto \alpha}]\tau_1) }\\\\ \\
 	\inferrule*[Right=Case]
      {\alpha,\beta,\bar{\gamma},\bar{\delta},\Delta;\Gamma \vdasharrow e : \alpha \leadsto C \\\\
-	   (K_i : \forall \bar{a}\bar{b}.\ Q_i \Rightarrow \bar{\tau}_i \rightarrow  \mathtt{T}\ \bar{a}) \in \Gamma \\
+        \text{\hilight{$(K_i : \forall \bar{a}\bar{b}.\ Q_i \Rightarrow \bar{\tau}_i \rightarrow  \mathtt{T}\ \bar{a})$}} \in \Gamma \\
        \alpha,\beta,\bar{\gamma},\bar{\delta},\bar{\rho},\Delta; \Gamma, (\overline{x_i : [b \mapsto \rho][a \mapsto \gamma]\tau_i})
           \vdasharrow e_i : \delta_i \leadsto C_i \\\\
 		C'_i = {\begin{cases}
@@ -1220,12 +1376,12 @@ generation. Observe the two rules in constraint generation where the environment
         \end{array}
 \end{displaymath}
 
-Note that in each instance, the form of the type schema retrieved from the environment is different! One form for  data constructors, and another
-for bindings. As $\textsf{Type}$ is part of the $X$ parameter, we do not have the luxury of simply pattern-matching on the structure of the type
-schema to determine if it is of the correct form. Instead we adjust our encoding of type schema, in order to force the user to provide
-correctly-structured types in the environment for data constructors. Specifically, we index our representation of type schema by a \textsc{NameType},
-providing a general type schema form for types of regular \textit{Binding}s but more structured forms for data constructors:
-
+Note that in each instance, the form of the type schema retrieved from the environment is different! One form for  data constructors ($ \forall
+\bar{a}\bar{b}.\ Q \Rightarrow \bar{\tau} \rightarrow  \mathtt{T}\ \bar{a}$), and another for bindings ($\forall\bar{a}.\ Q \Rightarrow
+\tau$). As $\textsf{Type}$ is part of the $X$ parameter, we do not have the luxury of simply pattern-matching on the structure of the type schema to
+determine if it is of the correct form. Instead we adjust our encoding of type schema, in order to force the user to provide correctly-structured
+types in the environment for data constructors. Specifically, we index our representation of type schema by a \textsc{NameType}, providing a general
+type schema form for types of regular \textit{Binding}s but more structured forms for types of data constructors:
 \begin{displaymath}
    \begin{array}{l}
    \textbf{data}\ \textsc{TypeSchema}\ (\mathit{tv} : \text{Set}) : \textsc{NameType} \rightarrow \text{Set}\ \textbf{where} \\
@@ -1240,12 +1396,10 @@ providing a general type schema form for types of regular \textit{Binding}s but 
     \end{array}
         \end{array}
 \end{displaymath}
-
-Here, we use a length-indexed vector $\textsc{Vec}$ to ensure that the arity of the function type in a data constructor matches the arity mentioned in
-its \textsc{Name}. 
+Here, we use a length-indexed vector $\textsc{Vec}$ to ensure that the arity of the function type for data constructors matches the arity mentioned in
+their \textsc{Name}. 
 
 This allows us to define environments as a total mapping of any $\textsc{Name}$ of type $n$ to $\textsc{TypeSchema}$ for the same name type $n$.
-
 \begin{displaymath}
    \begin{array}{l}
    \mathit{Environment} : \text{Set} \rightarrow  \text{Set} \rightarrow \text{Set} \\
@@ -1253,6 +1407,46 @@ This allows us to define environments as a total mapping of any $\textsc{Name}$ 
   \textsc{TypeSchema}\ \mathit{tv}\ n 
         \end{array}
 \end{displaymath}
+
+\subsubsection{Shape Indexing}
+
+One of the issues that results from indexing expressions by the set of available type variables is that constraint generation is no longer quite as
+trivially structurally recursive. For example, take the constraint generation rule for abstraction:
+
+\begin{displaymath}
+		\inferrule*[Right=Abs]
+        {\alpha,\beta,\Delta;\Gamma,(x : \alpha) \vdasharrow e : \beta \leadsto C }
+        {\Delta;\Gamma \vdasharrow \lambda x.\ e : \tau \leadsto \Finv \alpha.\ \Finv \beta.\ C \land' (\tau \sim (\alpha \rightarrow \beta))} \\
+\end{displaymath}
+
+In this rule, two new type variables are introduced into the set of available variables $\Delta$. This corresponds in our representation to an index
+$\mathcal{S}\ (\mathcal{S}\ \mathit{tv})$, however the expression $e$'s index is merely $\mathit{tv}$. The obvious way to remedy this is to simply
+``up-shift'' the de Bruijn indices in $e$ twice using the appropriate substitution functor, however this causes Agda's termination checker to
+complain --- the recursive invocation is no longer on the obviously smaller $e$; instead it is on the not-so-obviously smaller $\textit{e-subst}\
+(\mathit{rename}\ (\mathit{suc} \circ \mathit{suc}))\ e$. In order to show termination, we must show that substitution on types 
+(which change the structure of \emph{type} terms) do not change the recursion pattern used by the constraint generation (the structure of
+\emph{expression} terms). We achieve this using a simple technique: we add a \emph{third} index to the \textsc{Expression} type, which represents
+the structure or the \emph{shape} of the expression tree (see Fig.~\ref{fig:exprrepr}). The \textsc{Shape} type itself is a
+straightforward tree structure which is sufficient to encode the recursion pattern of constraint generation:
+\begin{displaymath}
+   \begin{array}{l}
+      \textbf{data}\ \textsc{Shape} : \text{Set}\ \textbf{where} \\
+      \quad \begin{array}{cll}
+         \mathit{Nullary} & : & \textsc{Shape} \\
+         \mathit{Unary}   & : & \textsc{Shape} \rightarrow \textsc{Shape} \\
+         \mathit{Binary}  & : & \textsc{Shape} \rightarrow \textsc{Shape} \rightarrow \textsc{Shape} \\
+      \end{array}
+   \end{array}
+\end{displaymath}
+
+With this addition, the type of the substitution functor for expressions now becomes:
+\begin{displaymath}
+  \textit{e-subst} : \forall \{\sigma : \textsc{Shape}\}\ \{\mathit{ev}\ \alpha\ \beta : \text{Set}\} \rightarrow (\alpha \rightarrow \textsf{Type}\ \beta)
+  \rightarrow \textsc{Expression}\ \mathit{ev}\ \alpha\ \sigma \rightarrow \textsc{Expression}\ \mathit{ev}\ \beta\ \sigma  
+\end{displaymath}
+
+The fact that the shape of the expression is not changed by type substitution is now made clear in the type of the type substitution operation.
+In constraint generation, recursion once again becomes structural, not on the expressions themselves, but on their shape parameters.  
 
 \begin{figure}
    \caption{The complete \textsc{Expression} representation}
@@ -1305,31 +1499,93 @@ This allows us to define environments as a total mapping of any $\textsc{Name}$ 
 \sigma_2) 
          \end{array}
       \end{array}
-%  mutual 
-%      let₃_·_∷_⇒_in′_ : ∀ {a a′} → (n : ℕ) → Expression ev (tv ⨁ n) a  
-%                                  → QConstraint (tv ⨁ n) 
-%                                  → Type (tv ⨁ n) 
-%                                  → Expression (Ⓢ ev) tv a′ 
-%                                  → Expression ev tv (Binary a a′)
-%      case_of_ : ∀ {r₁ r₂} → Expression ev tv r₁ → Alternatives ev tv r₂ 
-%               → Expression ev tv (Binary r₁ r₂)
-      
    \end{displaymath}
+   \label{fig:exprrepr}
 \end{figure}
 
+\subsection{Constraint Generator and Solver}
 
+Now that we have established our choice of representation for terms and types, we must still choose a representation for the \emph{computations} 
+themselves, specifically constraint generation, and solving.
 
+Broadly speaking, there are two main ways to encode this computation. The first is to directly encode the computation as an Agda function (using
+constraint generation as an example):
+\begin{displaymath}
+   \begin{array}{l}
+   \mathit{genConstraint} : \{\mathit{ev}\ \mathit{tv} : \text{Set}\}\ \{\sigma : \textsc{Shape}\} \\ \qquad\qquad\qquad 
+                          \rightarrow \mathit{Environment}\ \mathit{ev}\ \mathit{tv} \\ \qquad\qquad\qquad  \rightarrow \textsc{Expression}\
+                       \mathit{ev}\ \mathit{tv}\ \sigma  \\ \qquad\qquad\qquad
+                          \rightarrow \textsf{Type}\ \mathit{tv} \\ \qquad\qquad\qquad \rightarrow \textsc{Constraint}\ \mathit{tv} \\
+                       \begin{array}{c}
+                          \cdots
+                          \end{array}
+  \end{array}
+\end{displaymath}   
+This is certainly the most straightforward encoding of the algorithm, and was the method we had used during development of our formalisation.
+Ultimately, we chose not to use this simple representation, however, opting instead for a \emph{propositional} approach, defining a propositional data
+type for the constraint generation judgement:
+\begin{displaymath}
+   \begin{array}{l}
+    \textbf{syntax}\ \textsc{ConstraintGen}\ \Gamma\ \tau\ e\ C = \Gamma \vdasharrow e : \tau \leadsto C\\
+    \textbf{data}\ \textsc{ConstraintGen}\ \{ \mathit{ev}\ \mathit{tv} : \text{Set}\} \ 
+                       (\Gamma : \textit{Environment}\ \mathit{ev}\ \mathit{tv})\ (\tau : \textsf{Type}\ \mathit{tv}) : \\ \qquad\qquad \{\sigma : \textsc{Shape}\}
+                    \rightarrow 
+                    \textsc{Expression}\ \mathit{ev}\ \mathit{tv}\ \sigma \rightarrow \textsc{Constraint}\ \mathit{tv}\ \mathit{Hi} \rightarrow
+              \text{Set}\ \textbf{where} \\ \qquad \cdots
+  \end{array}
+\end{displaymath}   
 
-\subsection{Shape Indexing}
+This type contains constructors corresponding to each rule in the constraint generation (see Fig.~\ref{fig:constraintgen}). Then, to provide an
+algorithmic interpretation of these rules, and therefore provide a way to actually \emph{run} our constraint generator and infer types, we write a
+function that generates a proof of this proposition given the requisite inputs\footnote{Interestingly, as this function must be total and terminating,
+   this can be viewed as a proof of the decidability of the \textsc{ConstraintGen} proposition}:
 
+\begin{displaymath}
+   \begin{array}{ll}
+   \mathit{genConstraint}' & :\ \ \{\mathit{ev\ tv} : \text{Set}\}\ \{\sigma : \textsc{Shape}\}\ 
+                  (\Gamma : \mathit{Environment}\ \mathit{ev}\ \mathit{tv})\ (e : \textsc{Expression}\ \mathit{ev}\ \mathit{tv}\ \sigma)\ (\tau :
+                  \textsf{Type}\ \mathit{tv}) \\ & \rightarrow \exists\ (\lambda\ C \rightarrow \Gamma \vdasharrow e : \tau \leadsto C)
+   \end{array}
+\end{displaymath}   
 
-\subsection{Expressions and Names}
+This approach brings a number of advantages. For one, it brings a substantial performance improvement --- the constraint generator takes one tenth the
+time and one fifth the memory to type check. It also gives us an Agda proposition exactly the same in form to the rules presented in the previous
+chapter. Not only a nice aesthetic consequence, this also liberates us from certain petty annoyances that arise from encoding the algorithm directly.
+For example, the solver is partial --- not all constraints are satisfiable. In a direct functional encoding, this would necessitate
+$\mathtt{Maybe}$ types or similar mechanisms to deal with partiality. The propositional encoding of the solver, however, is only ever constructible in
+the happy case; the partiality is relegated to the algorithmic interpretation of the proposition.
 
+If we desire to prove things about these operations (for example, inference soundness and principality), then the propositional encoding of these
+algorithms is much more preferable. Instead of evaluating expressions and pattern matching on their results, we can more directly match on the various
+rules used to justify the proposition. This makes proofs done on paper about these systems much more straightforward to transfer to our formalisation.
 
-\subsection{Environments}
+Another advantage of the propositional encoding comes from the solver. Observe the rule for the solver infrastructure: 
+\begin{displaymath}
+      \inferrule{\mathcal{Q} ; Q_g ; \bar{\alpha} \stackrel{\text{simp}}{\vdasharrow} Q \leadsto Q_r; \theta \\
+                 \forall( (\exists^I \bar{\beta}_i.\ Q_i \supset \mathcal{C}_i) \in I  ).\ \mathcal{Q};Q_g \land Q_r \land Q_i ; \bar{\beta}_i
+              \stackrel{\text{solv}}{\vdasharrow} \mathcal{C}_i \leadsto \epsilon; \theta_i}
+                {\mathcal{Q} ; Q_g ; \bar{\alpha} \stackrel{\text{solv}}{\vdasharrow} Q \cdot I \leadsto Q_r; \theta }
+\end{displaymath}   
+In particular, note that each implication constraint body must resolve to $\epsilon$. In a propositional encoding, this is a non-issue, but an
+algorithmic encoding must check the return value of the solver function given the implication constraint, to \emph{ensure} that the result is $\epsilon$. As
+$\textsf{QConstraint}$s are part of the parameter and therefore abstract, we cannot pattern match to make these assurances, and must therefore demand a
+proof of the decidability of equality to $\epsilon$ in the $X$ constraint:
+\begin{displaymath}
+   \textbf{field}\ \textsf{dec-}\epsilon : (x : \textsf{QConstraint}) \rightarrow \textsc{Dec}\ (x \equiv \epsilon)
+\end{displaymath}
+Where $\textsc{Dec}$ is defined (in the standard library) as follows:
+\begin{displaymath}
+   \begin{array}{l}
+      \textbf{data}\ \textsc{Dec}\ (P : \text{Set}) : \text{Set}\ \textbf{where}\\
+      \quad\begin{array}{cll}
+         \mathit{yes} & : & P \rightarrow \textsc{Dec}\ P \\
+         \mathit{no} & : & (P \rightarrow \bot) \rightarrow \textsc{Dec}\ P
+      \end{array}
+      \end{array}
+\end{displaymath}
+By adopting a propositional encoding for the solver, we do not eliminate this issue, but at least we are able to confine it merely to the algorithmic
+interpretation of the proposition rather than have such nonsense pollute the rules themselves.
 
-\newpage
-\section{Representing $\outsidein$}
 
 
 
@@ -1357,7 +1613,7 @@ constraint conjunction and type equality constraints:
    \end{array}
 \end{displaymath}
 
-\textsc{Type}s consist of type variables (or constructors), type application and function types --- the typical assortment of types from System F.
+\textsc{Type} consists of type variables (or constructors), type application and function types --- the typical assortment of types from System F.
 \begin{displaymath}
    \begin{array}{l}
       \textbf{data}\ \textsc{Type}\ (x : \text{Set}) : \text{Set}\ \textbf{where} \\
@@ -1368,16 +1624,15 @@ constraint conjunction and type equality constraints:
          \end{array}
    \end{array}
 \end{displaymath}
-\textsc{Type}s are also a monad, as required by the $X$ parameter, but this proof is entirely uneventful and uninteresting, as is the proof of the
+\textsc{Type} is also a monad, as required by the $X$ parameter, but this proof is entirely uneventful and uninteresting, as is the proof of the
 functor laws for the $\textit{Q-subst}$ functor. Indeed, the only truly interesting component of the simple instantiation is the simplifier.
 
 The simplest possible simplifier is simply the no-op:
-
 \begin{displaymath}
    \mathcal{Q}\ ;\ Q_g\ ;\ \overline{\alpha_\text{tch}} \vdasharrow Q_w \leadsto Q_w\ ;\ \mathit{unit}_\textsf{Type}
 \end{displaymath}
 
-While this simplifier meets the simplifier soundness and principality criteria in figure~\ref{fig:entailment}, it is not a particularly interesting
+While this simplifier meets the simplifier soundness and principality criteria in Figure~\ref{fig:entailment}, it is not a particularly interesting
 simplifier to work with. Instead, we define a simplifier that is actually capable of solving constraints. 
 
 Broadly speaking, the simplifier is divided into two main components:
@@ -1428,12 +1683,11 @@ This isomorphism can be applied to types and constraints using the standard \emp
 representation for unification without affecting any other component of the instantiation or of the system.
 
 As this representation trivially ensures that the domain of any substitution is restricted only to the unification variables
-$\overline{\alpha_\text{tch}}$, we omit mention of $\overline{\alpha_\text{tch}}$ in figure 10.
+$\overline{\alpha_\text{tch}}$, we omit mention of $\overline{\alpha_\text{tch}}$ in Figure~\ref{fig:simpl}.
 
 \subsection{Solving}
 
 \begin{figure}
-   \label{fig:simpl}
    \begin{displaymath}
       \text{\fbox{$\mathcal{Q}\ ;\ Q_g \stackrel{\text{simp}}{\vdasharrow} Q_w \leadsto Q_r\ ;\ \theta $}}
    \end{displaymath}
@@ -1480,15 +1734,16 @@ $\overline{\alpha_\text{tch}}$, we omit mention of $\overline{\alpha_\text{tch}}
       (first order unification)
    \end{center}
    \caption{Simple instantiation of the simplifier}
+   \label{fig:simpl}
 \end{figure}
 
 
-The overall simplifier has to deal with the three possible constraint forms (see fig. 10). Empty $\epsilon$ constraints resolve trivially to the identity
-substitution, conjunctions resolve to a composition of the substitutions resulting from each of the two conjuncts, and type equality resolves to the
-most general unifier of the two types. There are two other rules for type equality: $\textsc{Entail}$, which searches for an identical constraint to
-the wanted equality  within the given context in order to trivially resolve the wanted constraint; and $\textsc{GiveUp}$, which simply gives up on solving the constraint
-entirely, returning it as a residual constraint. The presence of these rules makes the system not syntax-directed, and therefore it does not directly
-correspond to a deterministic algorithm. We resolve this nondeterminism by introducing an ordering on the rules: $\textsc{Mgu}$ is attempted first, then
+The overall simplifier has to deal with the three possible constraint forms (see Fig.~\ref{fig:simpl}). Empty $\epsilon$ constraints resolve trivially
+to the identity substitution, conjunctions resolve to a composition of the substitutions resulting from each of the two conjuncts, and type equality
+resolves to the most general unifier of the two types. There are two other rules for type equality: $\textsc{Entail}$, which searches the given
+context for an identical constraint to the wanted equality; and $\textsc{GiveUp}$, which simply gives up on solving the constraint entirely, returning
+it as a residual constraint. The presence of these rules makes the system not syntax-directed, and therefore it does not directly correspond to a
+deterministic algorithm. We resolve this nondeterminism by introducing an ordering on the rules: $\textsc{Mgu}$ is attempted first, then
 $\textsc{Entail}$, then $\textsc{GiveUp}$. 
 
 Another problem presents itself when one attempts to encode this simplifier in Agda. In the rule $\textsc{Conj}$, the first substitution $\theta$ is
@@ -1510,25 +1765,177 @@ the technique used for representing $\textsc{Expression}$s previously. We shall 
 \end{displaymath}
 
 With this indexed data type, substitution now has the following type:
-
 \begin{displaymath}
    \textit{SC-subst} : \forall \{ \alpha\ \beta \}\{ s \} \rightarrow (\alpha \rightarrow \textsc{Type}\ \beta) 
                      \rightarrow \mathit{SConstraint}\ \alpha\ s \rightarrow \mathit{SConstraint}\ \beta\ s
 \end{displaymath}
 
-As with \textsc{Expression}s, we can now glean from the type that the \emph{shape} of the constraint term does not change with substitution.
-Therefore, structural recursion can occur on the \textsc{Shape} index of the \testsc{SConstraint} term, rather than on the term itself. As
+As with \textsc{Expression}, we can now glean from the type that the \emph{shape} of the constraint term does not change with substitution.
+Therefore, structural recursion can occur on the \textsc{Shape} index of the \textsc{SConstraint} term, rather than on the term itself. As
 \textsc{SConstraint} and \textsc{QConstraint} are structurally identical, it is trivial to convert between them.
 
-\newpage
-\section{Future Work}
+\subsection{Results}
 
-\emph{Acknowledgements}. The author would like to thank the members of the Agda community, specifically Arseniy Alekseyev, Conor McBride, Daniel
-Peebles, Andrea Vezzosi and others, all of whom were of great assistance when learning Agda and developing this formalisation.
+We have used this simple instantiation to successfully infer types, including polymorphic types and types involving GADTs. In particular, recall the
+example used earlier to illustrate the necessity of removing {\tt let}-generalisation: 
+\begin{displaymath}
+   \begin{array}{l}
+	\begin{array}{ll}		
+		\textbf{data} & \mathit{IntOrBool}\ :: \mathtt{*} \rightarrow \mathtt{*}\ \textbf{where} \\
+		              & \begin{array}{lcl}
+                         \text{IsInt} & :: & (\tau \sim \mathit{Int}) \Rightarrow \mathit{IntOrBool}\ \tau \\
+                         \text{IsBool} & :: & (\tau \sim \mathit{Bool}) \Rightarrow \mathit{IntOrBool}\ \tau \\
+					    \end{array} \\						
+     \end{array} \\ \\
+\mathit{f} :: \mathit{IntOrBool}\ \alpha \rightarrow \alpha \rightarrow \mathit{Bool} \\
+\mathit{f}\ x\ y = \textbf{let}\ g\ z\ = \mathit{not}\ y\ \textbf{in}  \\
+\quad\quad\quad\quad\quad\textbf{case}\ x\ \textbf{of} \\
+\quad\quad\quad\quad\quad\quad\begin{array}{lll}
+   \mathit{IsInt} & \rightarrow & \text{True} \\
+   \mathit{IsBool} & \rightarrow & g\ ()\\
+   \end{array}
+   \end{array}
+\end{displaymath}
+This expression rightly fails to type-check in our simple instantiation, however if we add a type signature to $g$:
+\begin{displaymath}
+	\begin{array}{ll}		
+\mathit{f} :: \mathit{IntOrBool}\ \alpha \rightarrow \alpha \rightarrow \mathit{Bool} \\
+\mathit{f}\ x\ y = \textbf{let}\ g : \forall \beta.\  (\alpha \sim \mathit{Bool}) \rightarrow \beta \rightarrow \mathit{Bool} \\ 
+\quad\quad\quad\quad\quad g\ z\ = \mathit{not}\ y\ \textbf{in}  \\
+\quad\quad\quad\quad\quad\textbf{case}\ x\ \textbf{of} \\
+\quad\quad\quad\quad\quad\quad\begin{array}{lll}
+   \mathit{IsInt} & \rightarrow & \text{True} \\
+   \mathit{IsBool} & \rightarrow & g\ ()\\
+   \end{array}
+\end{array}
+\end{displaymath}
+The program now type-checks in our simple instantiation of $\outsidein$, as desired.
+
+
+\newpage
+\section{Conclusions and Future Work}
+
+Our formalisation comes to approximately three thousand lines of Agda definitions and proofs, excluding comments, which makes it one of the largest
+single formalisations in Agda to date, approximately one fifth the size of the entire Agda standard library. It takes approximately 46 seconds to
+type check, using the latest development version of Agda 2.3.2 on a mid-2011 MacBook Pro. Individual modules take no longer than five seconds to
+check. 
+
+During our development, constraint generation and other phases of the algorithm were written predominantly in a direct, functional style, rather
+than the final propositional encoding which we present here. Constraint generation, written this way, took approximately five minutes to type check,
+and required approximately six gigabytes of RAM --- just for the constraint generation module alone. Exactly what causes this is still unclear,
+however we have raised the issue with the Agda developers.
+
+While in development, we attempted to make extensive use of several experimental Agda features, such as instance arguments \cite{Devriese:2011gp},
+however this frequently resulted in strangely unsolved metavariables, confusing error messages, or worse, internal errors from Agda's type checker.
+
+One of our goals in this endeavour is to show Agda's readiness for type systems work. Despite all of the above problems, we believe we have succeeded
+in this respect. Agda has, for the most part, provided a very expressive language for us to encode our formalisation. Certain tricks, such as our
+encoding of expression names or our indexing of type terms, would be highly uncommon in proof assistants such as Coq and impossible in theorem provers
+such as Isabelle. On the other hand, Agda requires that all termination arguments be phrased in terms of structural recursion, which did result in
+some minor contortions to our formalisation that would not be necessary if a separate termination proof could be provided. Conor McBride has made the
+argument that such contortions are merely exposing pre-existing structure of our algorithms that was previously hidden, and therefore a structurally
+recursive presentation is clearer than a presentation with a separate termination proof \cite{McBride:2003bg}. We are not certain whether we agree
+with this argument, but offer it as justification for the abovementioned contortions.
+
+Agda is most definitely a programming language \emph{first} and a proof assistant \emph{second}. For this reason, it could be argued that we have been
+playing to Agda's strengths --- having encoded the structures, definitions and algorithms of the system, we have formalised the part of the system 
+to which Agda is best suited. It remains to be seen whether Agda is suitable for serious proof work (see section~\ref{subsec:soundness} for a
+discussion of a possible soundness proof for our formalisation).
+
+Another goal of our research was to provide a base upon which other type system formalisations can be developed, and to create a testbed for
+experimenting with $\outsidein$ on solid formal ground. By including a simple instantiation of the system, we have demonstrated the capability of our
+formalisation to represent real type systems and infer types for real programs. An obvious direction for future work is to instantiate $X$ for all of
+Haskell, a prospect we discuss in section~\ref{subsec:haskell}, as well as expanding the simple instantiation to include proofs of the simplifier
+soundness and principality conditions.   
+
+\subsection{Proofs}
+\label{subsec:soundness}
+
+We have completed a preliminary investigation into a proof of \emph{soundness} for the inference system we have presented. \emph{Soundness} here
+refers the notion that if a particular type $\tau$ is inferred for an expression $e$, then there exists a \emph{proof} according to some natural,
+permissive typing rules that $e$ is well typed by $\tau$. Also of interest is a \emph{principality} proof, which suggests that any inferred type of an
+expression $e$ is the principal type for $e$.  The original $\outsidein$ paper presents typing rules as well as a proof of soundness and principality
+for their system, assuming simplifier soundness and guess-freedom conditions. A number of obstacles make converting those proofs to our formalisation
+less than straightforward: 
+
+\begin{enumerate}
+      \item The proofs presented in the $\outsidein$ paper are not very detailed, mostly due to space constraints, and as a result some steps in the
+         proof are not very clear. For example, both proofs mention induction, however the exact structure of the induction is not clarified; and in
+         both proofs, several cases are dismissed as similar to a previous case, without clarification as to exactly what is different or how they are
+         similar.
+      \item Some properties of entailment upon which the soundness proof relies are not even formalised in the entailment relation presented in the
+         paper. For example, it is not required that $\epsilon$ is entailed by any context, nor is conjunction elimination included in the original
+         presentation of entailment.  Nevertheless, these properties are relied upon by the soundness proof. 
+      \item Our formalisation introduces a few new layers of indirection between constraint generation and constraint solving (such as the prenexer,
+         separator and so on). This added indirection means that the constraint produced by the constraint generator and the constraint given to the
+         solver are not the same, which makes reasoning more difficult.
+      \item The original proof takes certain properties of conjunctions as automatic and invisible; specifically associativity, commutativity, and
+         identity with $\epsilon$.  This means that goals might be perfectly provable but not fitting to the exact structure of the constraints
+         required, which can make proving much more difficult. 
+\end{enumerate}            
+
+The first two points here mostly concern problems with the original $\outsidein$ proof. These problems are not insurmountable, and indeed they are to
+be expected --- all proofs become sloppy when viewed through the harsh, clear lens of a proof assistant. The final two points, however, reveal some
+weaknesses in Agda's approach to theorem proving. It is common to find oneself \emph{encumbered by structure} in languages such as Agda, where proofs
+of even simple properties can be complicated by the wrong choice of representation. In Isabelle, for example, correspondences across layers of
+indirection and simple lemmas about entailment (such as commutativity of conjunction) can be added to an automatic simplifier that would make these
+problems trivially soluble. Agda, on the other hand, places on us the onerous burden of manually rewriting terms to be of the correct structure, and
+manually transporting properties across isomorphisms.
+
+While these obstacles are irritating, they are not impossible to overcome. Therefore, our subsequent research effort shall be devoted to developing a
+soundness proof for our formalisation. 
+
+\subsection{Instantiating $X$ for Haskell}
+\label{subsec:haskell}
+
+Another obvious progression from this point is to investigate an instantiation of the $X$ parameter with a sophisticated type system that supports the
+many extensions available in Haskell, such as type classes (and their corresponding top-level axiom schemes), type families, and so on. A surface
+evaluation reveals that this would likely be quite difficult, chiefly because the simplifier for this Haskell-like type system does not have a
+straightforward termination measure --- Indeed, none is presented in the original $\outsidein$ paper, which presents this simplifier as a sequence of
+rewrite rules. The GHC implementation of the simplifier also has no obvious termination argument.  While a proof of termination could no doubt be
+found (the system does, after all, appear to terminate!), it may well be difficult to phrase such a sophisticated simplifier as a structural
+recursion.
+
+One method towards circumventing this problem (which does not involve determining a complicated termination argument for the rewrite system) is to
+simply pass an arbitrary large natural number to the rewrite system which reduces this number by one on each rule application, failing if the number
+reaches zero. A proof of termination would then be rephrased as a proof that there exists a number for any term which, when given to this system along
+with the term, will result in an expression in normal form (i.e.\ not fail). By rephrasing it this way, Agda will view the rewrite system as
+structurally recursive in the natural number, and a separate proof of termination can be provided\footnote{Or simply assumed, if no proof is found.}.  
+
+
+\subsection{Summary of Contributions}
+
+\begin{itemize}
+      \item A more rigorous and clear formulation of the $\outsidein$ inference system.
+      \item An Agda formalisation of this system, instantiable for real type systems, that can be used for experimentation and development of new type 
+         system extensions on solid formal ground.
+      \item A simple example instantiation of the above Agda formalisation, which can be used to infer types for basic programs, and can also serve as
+         a basis for more sophisticated instantiations.
+      \item A demonstration of a variety of representational techniques for names and terms, suitable for similar work in both dependently-typed
+         languages like Agda, and almost-dependently-typed languages like Haskell.
+\end{itemize}
+
+Through our work on $\outsidein$, we have shown that Agda gives us through its type system a very useful and powerful language to express structure
+and maintain invariants about our data. The addition of a soundness and principality proof, an obvious direction for future work, would
+make our formalisation highly compelling for those seeking to extend or experiment with Haskell's type inference system. Even without such a proof,
+our formalisation already serves as a platform for experimentation, as it is the only implementation of $\outsidein$ that is actually abstracted over
+its $X$ parameter.  Ultimately, this project has brought us one small step closer to a rigorously formalised type system for GHC Haskell.
 
 \bigskip
 
-\bibliographystyle{alpha}
+\bigskip
+
+\bigskip
+
+\emph{Acknowledgements}. The author would like to thank the members of the Agda community, specifically Arseniy Alekseyev, Conor McBride, Daniel
+Peebles, Andrea Vezzosi and others, all of whom were of great assistance when learning Agda and developing this formalisation. Edward Kmett and Ashley
+Yakely also offered their advice and assistance during the development of the category theory components of the formalisation. Thanks are also due to
+Manuel Chakravarty, who supervised this project, and the entire PLS group at UNSW. 
+
+On a personal note, I would like to thank my partner Tran for her support and understanding in this busy year.
+\bigskip
+
+\bibliographystyle{jfp}
 \bibliography{../cites}	
 \end{document}
 
